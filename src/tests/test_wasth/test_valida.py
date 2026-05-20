@@ -6,6 +6,8 @@ def testfile():
     f = "testdata/casa/br_df-planaltina-casarao_azul.md"
     return f
 
+# Testes de YAML linting
+
 def test_f_read(testfile):
     assert type(wasth.valida.f_read(testfile)) is dict
 

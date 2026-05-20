@@ -34,12 +34,13 @@ def prt_title(f) -> str:
 def f_lint(f) -> list:
     """Mostra os problemas de formatação"""
     frontmatter = f_read(f)['frontmatter']
-    print(
-        "--------------------------------------------------------------------",
-        "\n",
-        prt_title(f),
-        "\n"
-    )
+    title = prt_title(f)
+    print(f"""
+-------------------------------------------------------------------------------
+{title.upper():^79s}
+
+📄 {f}
+    """)
     import yamllint.config
     import yamllint.linter
     yaml_config = yamllint.config.YamlLintConfig("extends: relaxed")
@@ -64,9 +65,28 @@ def f_lint(f) -> list:
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        args = sys.argv[1]
+        args = sys.argv[1:]
     else:
-        args = input("Informar nome(s) de arquivo/ficheiro:\n").split()
-    for arg in args:
-        if os.path.isfile(arg):
-            f_lint(arg)
+        args = input(
+            "Informar um caminho relativo de pasta ou nomes de arquivos/ficheiros:\n"
+        ).split()
+    if os.path.isdir(args[0]):
+        filelist = [f for f in os.listdir(args[0]) if os.path.isfile(os.path.join(args[0], f))]
+        print("Conteúdo da pasta:")
+        for f in filelist:
+            fpath = os.path.join(args[0], f)
+            try:
+                with open(fpath, 'r') as f:
+                    if f.read(3) == '---':
+                        f_lint(fpath)
+            except:
+                print(f"""
+-------------------------------------------------------------------------------
+
+🚫 Não foi possível ler {fpath}""")
+    elif os.path.isfile(args[0]):
+        try:
+            for f in args:
+                f_lint(f)
+        except:
+            print(f"🚫 Não foi possível ler {f}")
