@@ -9,7 +9,8 @@ authors = [
 requires-python = ">=3.14"
 dependencies = [
     "pydantic[email]>=2.13.4",
-    "pyyaml>=6.0.3",
+    "ruamel-yaml>=0.19.1",
+    "yamllint>=1.38.0",
 ]
 
 [project.scripts]
