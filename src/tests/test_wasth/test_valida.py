@@ -16,3 +16,5 @@ def test_prt_title(testfile):
 
 def test_f_lint(testfile):
     assert type(wasth.valida.f_lint(testfile)) is list
+
+# Testes de validação do esquema
