@@ -1,4 +1,4 @@
-"""Módulo de validação: roda antes e depois de editar
+"""Módulo de validação do YAML: roda antes e depois de editar
 
 Verifica se o arquivo/ficheiro existe, e se a sua sintaxe é válida.
 """
@@ -61,18 +61,6 @@ def f_lint(f) -> list:
             f"{'['}{p.rule}{']'}"
         )
     return yaml_lint_list
-
-def f_schema(f) -> None:
-    """Mostra problemas de estrutura dos dados"""
-    import xmlschema
-    XML_schema = xmlschema.XMLschema("https://lido-schema.org/schema/v1.1/lido-v1.1.xsd")
-    XML_schema.export(target='schemata', save_remote=True)
-    XML_schema = xmlschema.XMLschema("schemata/lido-v1.1.xsd")
-    XML_profile = xmlschema.XMLschema("https://lido-schema.org/profiles/v1.1/lido-v1.1-profile-architecture-v1.1.xsd")
-    XML_profile.export(target='schemata', save_remote=True)
-    XML_profile = xmlschema.XMLschema("schemata/lido-v1.1-profile-architecture-v1.1.xsd")
-    XMLschema = xmlschema.XMLSchema([ XML_schema, XML_profile ])
-    pass
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
