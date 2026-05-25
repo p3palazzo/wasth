@@ -1,5 +1,9 @@
+from glob import glob
+import os
 import pytest
+import xmlschema
 import wasth.valida_yaml
+import wasth.valida_xml
 
 @pytest.fixture
 def testfile():
@@ -18,3 +22,14 @@ def test_f_lint(testfile):
     assert type(wasth.valida_yaml.f_lint(testfile)) is list
 
 # Testes de validação do esquema
+
+def test_create_schema(schema_path="schemata/lido-v1.1-profile-architecture-v1.1.xsd"):
+    wasth.valida_xml.create_schema()
+    assert os.path.isfile(schema_path)
+
+def test_valid_xml(schema="schemata/lido-v1.1-profile-architecture-v1.1.xsd"):
+    assert wasth.valida_xml.valid_xml("testdata/Stabkirche_Gol_Original_de_en_v1.1_20250331.xml") == True
+
+def test_invalid_xml(schema="schemata/lido-v1.1-profile-architecture-v1.1.xsd"):
+    with pytest.raises(xmlschema.exceptions.XMLResourceParseError):
+        wasth.valida_xml.valid_xml("testdata/invalid.xml")

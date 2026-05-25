@@ -83,7 +83,6 @@ Informar um caminho relativo de pasta ou nomes de arquivos/ficheiros:
                 with open(file, 'r') as f:
                     if f.read(3) == '---':
                         f_lint(file)
-                        f_schema(file)
             except:
                 print(f"""
 -------------------------------------------------------------------------------
