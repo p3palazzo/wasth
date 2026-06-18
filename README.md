@@ -16,7 +16,7 @@ A plataforma de teste deste aplicativo deve ser configurada com [UV].
 
 ## Roteiro de desenvolvimento
 
-- [ ] Lint formatação YAML;
+- [x] Lint formatação YAML;
 - [ ] Valida cabeçalhos YAML das fichas contra modelo de preenchimento;
 - [ ] Valida fichas preenchidas contra especificação XSD do LIDO;
 - [ ] Interface de criação de novas fichas;
