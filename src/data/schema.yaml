@@ -1,0 +1,205 @@
+id: str(matches=regex(r'^([2-9CFGHJMPQRVWX]{8})\+([2-9CFGHJMPQRVWX]{3})$', name='OLC Plus Code 11')) # lido:recordID
+date: day(min='2022-01-01') # lido:recordMetadataDate
+author: regex('([0-9X]{4})-([0-9X]{4})-([0-9X]{4})-([0-9X]{4})', name='ORCID')
+title: str(min=3, max=75)
+title_type: enum("brandName", "cited", "creator", "descriptive", "former", "inscribed", "owner", "popular", "repository", "translated", "other", required=False)
+title_source: list(include('citation'), required=False)
+tags: list(str(), required=False) # Simpler replacement for lido:classification even though we lose classification_type
+workType: list(include('typed_refs'), max=7)
+classifications: list(include('classification'), required=False)
+spatial: list(include('place'))
+locationHistoric: list(include('location_historic'), required=False)
+identifiers: list(include('identifier'), required=False) # lido:publishedID
+titles: list(include('alternate_title'), required=False)
+inscriptions: list(include('inscription'), required=False)
+format:
+  extent:
+    display: str(required=False)
+    measurements: list(include('size'), required=False)
+  medium:
+    display: str(required=False)
+    material: list(include('material_tech'), required=False)
+    technique: list(include('material_tech'), required=False)
+events: list(include('event'), required=False)
+subject: list(include('topic'), required=False)
+relation: list(include('object'), required=False)
+work_rights: list(include('right'), required=False)
+record_rights: list(include('right'))
+collection: list(include('typed_refs'), required=False) # Provisional
+resources: list(include('resource'), required=False)
+header:
+  teaser: include('url', required=False)
+  overlay_image:  include('url', required=False)
+---
+url: regex(r'^https?:\/\/(?:([\w\-]+\.)+[\w\-]+)(?:\/[^\s]*)?$', name='URL')
+
+lido_term: regex('^http://terminology.lido-schema.org/lido([0-9]{5})$', name="LIDO Terminology")
+
+typed_refs:
+  type: enum('local', 'iri', 'uri', required=False) # required=False enums will be given a default value at runtime
+  concept: include('lido_term', required=False)
+  refid: str()
+  display: str(required=False)
+
+citation:
+  refid: regex(r'@[a-zA-Z0-9_][\w:.#$%&\-+?<>~\/]*', name='CSL citekey')
+  note: str(max=75, required=False)
+
+note:
+  headline: str(required=False)
+  text: str(required=False)
+  source: include('citation', required=False)
+  rights: include('right', required=False)
+
+place:
+  type: enum('site', 'formerSite', 'intended', 'other', required=False)
+  display: str(required=False)
+  term: include('typed_refs', required=False)
+  repository: include('legal_body', required=False)
+  location: include('gml_point')
+  extent: list('gml_poly', required=False)
+
+location_historic:
+  type: enum("corporate", "geographic", "personal", "other")
+  term: include('typed_refs', required=False)
+  display: str(required=False)
+
+gml_point:
+  lat: num(min=-90, max=90)
+  lon: num(min=-180, max=180)
+  alt: num(min=0, max=10000, required=False)
+  zoom: int(min=0, max=18, required=False)
+  srsName: include('typed_refs', required=False)
+  source: include('legal_body')
+
+gml_poly:
+  type: enum("Polygon", "LineString")
+  coordinates: str()
+  srsName: include('typed_refs', required=False)
+  source: include('legal_body')
+
+identifier:
+  term: include('typed_refs')
+  source: include('legal_body')
+
+alternate_title:
+  type: enum("brandName", "cited", "creator", "descriptive", "former", "inscribed", "owner", "popular", "repository", "translated", "other")
+  text: str(min=3)
+  pref: include('lido_term') # http://terminology.lido-schema.org/pref
+  source: include('citation', required=False)
+
+inscription:
+  type: enum('signature', 'mark', 'caption', 'date', 'text', 'translation', 'other')
+  transcription: list(include('transcription'), required=False)
+  description: list(include('note'), required=False)
+
+transcription:
+  lang: regex('^[a-zA-Z-]+$', min=2)
+  text: str()
+
+size:
+  type: include('lido_term') # http://terminology.lido-schema.org/objectMeasurementsSet_type
+  unit: include('typed_refs') # Provisional
+  value: num(min=0)
+  extent: include('extent', required=False)
+  qualifier: str(required=False) # Provisional
+  format: str(required=False) # Provisional
+  shape: str(required=False) # Provisional
+  scale: num(min=0, required=False)
+  source: include('citation', required=False)
+
+material_tech:
+  type: enum('medium', 'support', 'other', required=False)
+  term: include('typed_refs')
+  extent: str()
+  source: include('citation')
+
+event:
+  sortorder: int(min=1)
+  text: include('note')
+  href: include('url', required=False)
+  type: enum('alteration', 'broadcast', 'bulk', 'commission', 'creation', 'design', 'destruction', 'discovery', 'exhibition', 'inclusive', 'performance', 'publication', 'restoration', 'view', 'other')
+  actor_role: list(include('actor'), required=False)
+  start_date: include('event_date', required=False)
+  end_date: include('event_date', required=False)
+  periods: list(include('typed_refs'), required=False)
+  cultures: list(include('typed_refs'), required=False)
+  places: list(include('place'), required=False)
+  place_type: include('lido_term', required=False)
+  methods: list(include('typed_refs'), required=False)
+  materials_tech: list(include('material_tech'), required=False)
+  measurements: list(include('size'), required=False)
+  related: list(include('typed_refs'), required=False)
+  things_present: list(include('typed_refs'), required=False)
+  media: list(include('media'), required=False)
+
+event_date:
+  year: int()
+  month: int(min=1, max=12, required=False)
+  day: int(min=1, max=31, required=False)
+  display_date: str(required=False)
+  type: enum("estimated", "exact")
+
+topic:
+  display: str(required=False)
+  type: enum('descriptiveTopic', 'conceptTopic', 'iconographicTopic', 'otherTopic', required=False)
+  extent: include('extent', required=False)
+  concept: include('typed_refs', required=False)
+
+object:
+  display: str(required=False)
+  display_object: str(required=False)
+  term: include('typed_refs', required=False)
+  resource: include('media', required=False)
+  object_type: include('lido_term', required=False) # http://terminology.lido-schema.org/objectType
+  object_note: list(include('note'), required=False) # LIDO-Handbuch: Describes how the related object is related or relevant to this object.
+  type: include('lido_term') # http://terminology.lido-schema.org/relatedWorkRelType
+  source: list(include('citation'), required=False)
+
+resource:
+  id: include('typed_refs', required=False) # Provisional
+  representation: list(include('media'), required=False)
+  description: str(required=False)
+  perspective: int(min=0, max=9) # ISO 19650-2 view codes
+  date:
+    display: str(required=False)
+    earliest_date: include('event_date', required=False)
+    latest_date: include('event_date', required=False)
+  source: list(include('citation'), required=False)
+  credit: include('legal_body', required=False)
+  rights: list(include('right'))
+
+right:
+  type: include('typed_refs', required=False)
+  concept: enum('generic', 'specific', required=False) # http://terminology.lido-schema.org/rightsType_type
+  temporal:
+    earliest_date: day(required=False)
+    latest_date: day(required=False)
+  holder: include('legal_body', required=False)
+
+legal_body:
+  type: enum('personal', 'corporate', 'family', 'other', required=False)
+  term: include('typed_refs', required=False)
+  display: str(required=False)
+
+actor:
+  term: include('typed_refs', required=False)
+  display: str(required=False)
+  type: enum('personal', 'corporate', 'family', 'other', required=False)
+  role: include('typed_refs')
+  qualifier: list(include('typed_refs'), required=False)
+  extent: list(include('typed_refs'), required=False)
+  source: include('citation')
+
+extent: include('typed_refs') # Provisional
+
+media:
+  type: include('lido_term', required=False) # http://terminology.lido-schema.org/resourceRepresentation_type
+  teaser: include('url', required=False)
+  format: str()
+  href: include('url')
+  measurements: list(include('size'), required=False)
+  caption: str()
+  alt: str(min=2, required=False)
+  credit: str(required=False)
+  rights: list(include('right'), required=False)

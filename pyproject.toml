@@ -1,0 +1,35 @@
+[project]
+name = "wasth"
+version = "0.1.0"
+description = "Web App para a documentação de Sítios Tradicionais e Históricos"
+readme = "README.md"
+authors = [
+    { name = "Pedro P. Palazzo", email = "palazzo@unb.br" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "defusedxml>=0.7.1",
+    "pandoc>=2.4",
+    "pydantic[email]>=2.13.4",
+    "python-frontmatter>=1.3.0",
+    "ruamel-yaml>=0.19.1",
+    "xmlschema>=4.3.1",
+    "xmltodict>=1.0.4",
+    "yamale[ruamel]>=6.1.0",
+    "yamllint>=1.38.0",
+]
+
+[project.scripts]
+wasth = "wasth:main"
+
+[build-system]
+requires = ["uv_build>=0.11.13,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.6.0",
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.15.12",
+]

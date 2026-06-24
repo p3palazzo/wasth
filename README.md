@@ -11,13 +11,25 @@ norma ISO 21127:2023.
 
 ## Como usar
 
-A plataforma de teste deste aplicativo deve ser configurada com [UV].
+A plataforma de teste deste aplicativo deve ser configurada com [UV]:
+
+```
+uv sync
+uv run pytest
+uv run src/wasth/valida_yaml.py [PATH...]
+```
+
+No momento, apenas `src/wasth/valida_yaml.py` e `src/wasth/valida_xml.py` 
+funcionam parcialmente.
+`[PATH]` é relativo ao diretório de execução do comando e
+aceita uma sequência de nomes de arquivos `*.md` separados por espaços
+ou um nome de pasta contendo um ou mais arquivos.
 
 
 ## Roteiro de desenvolvimento
 
-- [ ] Lint formatação YAML;
-- [ ] Valida cabeçalhos YAML das fichas contra modelo de preenchimento;
+- [x] Lint formatação YAML;
+- [x] Valida cabeçalhos YAML das fichas contra modelo de preenchimento;
 - [ ] Valida fichas preenchidas contra especificação XSD do LIDO;
 - [ ] Interface de criação de novas fichas;
 - [ ] Interface de edição de fichas existentes;
