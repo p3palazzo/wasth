@@ -29,7 +29,9 @@ ou um nome de pasta contendo um ou mais arquivos.
 ## Roteiro de desenvolvimento
 
 - [x] Lint formatação YAML;
-- [x] Valida cabeçalhos YAML das fichas contra modelo de preenchimento;
+- [x] Valida cabeçalhos YAML das fichas contra esquema de preenchimento;
+- [x] Normaliza cabeçalhos YAML das fichas para sintaxe, não contra esquema;
+- [ ] Gera Open Location Code a partir de coordenadas;
 - [ ] Valida fichas preenchidas contra especificação XSD do LIDO;
 - [ ] Interface de criação de novas fichas;
 - [ ] Interface de edição de fichas existentes;

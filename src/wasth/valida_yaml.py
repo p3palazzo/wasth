@@ -27,7 +27,7 @@ def f_read(f, mode='r', enc="utf-8") -> dict:
         }
     return document
 
-def parse_metadata(f, mode='r', enc="utf-8") -> frontmatter.Post:
+def parse_metadata(f, enc="utf-8") -> frontmatter.Post:
     """Carrega metadados em forma de dicionário com python-frontmatter"""
     with open(f, 'r', encoding=enc) as f:
         post = frontmatter.load(f)
@@ -83,9 +83,9 @@ def f_schema(f):
                 print('\t%s' % error)
         exit(1)
 
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        args = sys.argv[1:]
+def filelist(input) -> list:
+    if len(input) > 1:
+        args = input[1:]
     else:
         args = input("""
 Informar um caminho relativo de pasta ou nomes de arquivos/ficheiros:
@@ -99,29 +99,33 @@ Informar um caminho relativo de pasta ou nomes de arquivos/ficheiros:
             ]
         elif os.path.isfile(args[0]):
             filelist = args
-        for file in filelist:
-            try:
-                title = parse_metadata(file)['title']
-                print(f"""
+    else:
+        print("Operação cancelada")
+    return filelist
+
+if __name__ == "__main__":
+    files = filelist(sys.argv)
+    for file in files:
+        try:
+            title = parse_metadata(file)['title']
+            print(f"""
 -------------------------------------------------------------------------------
 {title.upper():^79s}
 
 📄 {file}
-    """)
-                f_lint(file)
-                if f_lint(file) == []:
-                    print("✅ Sem inconsistências de formatação.\n")
-                else:
-                    print("Relatório de inconsistências de formatação:\n")
-                    for p in f_lint(file):
-                        print(p)
-                metadata = f_read(file)['metadata']
-                f_schema(metadata)
-            except Exception as e:
-                print(f"""
+""")
+            f_lint(file)
+            if f_lint(file) == []:
+                print("✅ Sem inconsistências de formatação.\n")
+            else:
+                print("Relatório de inconsistências de formatação:\n")
+                for p in f_lint(file):
+                    print(p)
+            metadata = f_read(file)['metadata']
+            f_schema(metadata)
+        except Exception as e:
+            print(f"""
 -------------------------------------------------------------------------------
 
 🚫 Não foi possível ler {file}:""")
-                print('  ' + str(e))
-    else:
-        print("Operação cancelada")
+            print('  ' + str(e))
