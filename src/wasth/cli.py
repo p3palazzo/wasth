@@ -5,7 +5,7 @@ from typing import Annotated, Optional
 
 import typer
 from pyorcid_checksum import ORCID_Checksum
-from rich import print
+from rich import print as rprint
 
 app = typer.Typer()
 
@@ -50,7 +50,7 @@ def main(
 Para instruções, digitar o comando:
 uv run typer src/wasth/app.py run --help
         """)
-    print("""
+    rprint("""
 Por ora, não temos funcionalidade nenhuma nesta app.
     """)
 
