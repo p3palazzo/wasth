@@ -28,20 +28,21 @@ def user_orcid(orcid: str) -> str:
 def main(
     orcid: Annotated[
         str,
-        typer.Option(
-            "--orcid",
-            prompt="Para começar, digite o seu ORCiD",
+        typer.Argument(
+            envvar="ORCID",
+            metavar="ORCiD",
+            prompt="Para começar, digite o seu ORCiD. Também pode cadastrá-lo na variável de ambiente 'ORCID'",
             callback=user_orcid,
-            help="Seu número do ORCiD.",
+            help="Seu número ou URI do ORCiD. Se não possuir um, cadastre-se em https://orcid.org",
         ),
-    ] | None = None
+    ]
 ) -> None:
     """
     Esta é a tela de acesso à interfaz de preenchimento das fichas dos
     Documentários de arquitetura tradicional.
     """
     typer.echo(f":white_check_mark: ORCiD {orcid} válido.")
-    print("""
+    rprint("""
 -------------------------------------------------------
  Interfaz de linha de comando da aplicação
  [bold]WASTH[/bold] : Web App para Sítios Tradicionais e Históricos
