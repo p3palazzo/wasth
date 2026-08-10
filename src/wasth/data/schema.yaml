@@ -7,13 +7,13 @@ title: str(min=3, max=75)
 title_type: enum("brandName", "cited", "creator", "descriptive", "former", "inscribed", "owner", "popular", "repository", "translated", "other", required=False)
 title_source: list(include('citation'), required=False)
 work_type:
-  condition: include('typed_refs', required=False)
-  form: include('typed_refs', required=False)
-  function: include('typed_refs', required=False)
-  context: include('typed_refs', required=False)
-  material_tech: include('typed_refs', required=False)
-  subject_type: include('typed_refs', required=False)
-  use: include('typed_refs', required=False)
+  condition: list(include('typed_refs'), required=False)
+  form: list(include('typed_refs'), required=False)
+  function: list(include('typed_refs'), required=False)
+  context: list(include('typed_refs'), required=False)
+  material_tech: list(include('typed_refs'), required=False)
+  subject_type: list(include('typed_refs'), required=False)
+  use: list(include('typed_refs'), required=False)
 classifications: list(include('classification'), required=False)
 tags: list(str(), required=False) # Simple, provisional replacement for lido:classification
 spatial: list(include('place'))
@@ -49,6 +49,7 @@ typed_refs:
 citation:
   refid: regex(r'@[a-zA-Z0-9_][\w:.#$%&\-+?<>~\/]*', name='CSL citekey')
   note: str(max=75, required=False)
+  display: str(required=False)
 
 note:
   headline: str(required=False)
