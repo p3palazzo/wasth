@@ -148,8 +148,8 @@ f":warning:  O registro {citation} não contém um campo com chave de citação,
         post['spatial'] = deepcopy(places) if places else None
     return post
 
-def make_id(work: models.Obra, overwrite: bool | None = None) -> models.Obra:
-    "Roda o método de geração de ID Open Location no objeto models.Obra"
+def make_id(work: models.Work, overwrite: bool | None = None) -> models.Work:
+    "Roda o método de geração de ID Open Location no objeto models.Work"
     if work.get('spatial') is None:
         pass
     current_id = work.get('id')
@@ -172,7 +172,7 @@ f"Sobrescrever ID {current_id} existente com novo ID {new_id}? s/n"
     work['id'] = new_id
     return work
 
-def write_id(source_file: Path | None, enc: str = 'utf-8') -> models.Obra:
+def write_id(source_file: Path | None, enc: str = 'utf-8') -> models.Work:
     "Grava o Open Location Code para o arquivo/ficheiro indicado."
     if not source_file:
         source_file = Path(input("Inserir um caminho de arquivo/ficheiro:"))
@@ -181,7 +181,7 @@ def write_id(source_file: Path | None, enc: str = 'utf-8') -> models.Obra:
 f":x:  Arquivo/ficheiro não encontrado em {str(source_file)} ou não é Markdown"
         )
     try:
-        work = models.Obra.from_file(source_file)
+        work = models.Work.from_file(source_file)
     except Exception as e:
         raise ValueError(f"""
 :x:  Erro ao ler {source_file}:
@@ -209,7 +209,7 @@ def main(paths: models.InOutPaths | None = None) -> list | None:
         filename = Path(file)
         post = normalize(post)
 # Funcionalidade temporária abaixo, remover quando não for mais necessária.
-        obra = models.Obra.from_post(post)
+        obra = models.Work.from_post(post)
         post = make_id(obra)
 # Funcionalidade temporária acima, remover quando não for mais necessária.
         models.write_file(post, output_dir, filename)

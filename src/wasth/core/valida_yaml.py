@@ -15,7 +15,7 @@ from rich import print
 from ruamel.yaml import YAML
 
 from wasth.core import models
-from wasth.core.models import Obra
+from wasth.core.models import Work
 
 yaml = YAML(typ='safe')
 
@@ -89,7 +89,7 @@ def f_valida(files: list[str]) -> int:
     had_error = False
     for file in files:
         try:
-            work = Obra.from_file(file)
+            work = Work.from_file(file)
             title = work['title']
             print(f"""
 -------------------------------------------------------------------------------

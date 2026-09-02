@@ -65,7 +65,7 @@ def test_id(testfile2):
     "Testa geração de ID"
     post = frontmatter.load(testfile2)
     normalized = norm.normalize(post)
-    work = wasth.Obra.from_post(normalized)
+    work = wasth.Work.from_post(normalized)
     assert work.olc_id() == '58PJ98HQ+89W'
 
 def test_write(testfile, output_dir):

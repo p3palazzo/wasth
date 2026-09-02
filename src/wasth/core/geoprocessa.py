@@ -56,7 +56,7 @@ def main(
     files = args['filelist']
     features = []
     for f in files:
-        obra = models.Obra.from_file(f)
+        obra = models.Work.from_file(f)
         places = obra.places()
         if not places:
             return None

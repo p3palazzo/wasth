@@ -38,8 +38,8 @@ def test_geoprocessa(testfile):
     metadata = frontmatter.load(testfile)
     post = norm.normalize(metadata)
     assert isinstance(post, frontmatter.Post)
-    work = wasth.Obra.from_post(post)
-    assert isinstance(work, wasth.Obra)
+    work = wasth.Work.from_post(post)
+    assert isinstance(work, wasth.Work)
     places = work.places()
     assert isinstance(places, geojson.FeatureCollection)
     assert places.errors() == []

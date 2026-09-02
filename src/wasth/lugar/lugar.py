@@ -37,7 +37,7 @@ def main(
 :card_index:  Encontrado documento {str(f)}.
             """)
             for feature in collection['features']:
-                lugar = models.Lugar.from_ibge_bc250(feature, orcid=orcid)
+                lugar = models.Place.from_ibge_bc250(feature, orcid=orcid)
                 if lugar is None:
                     print(f"""
 :warning:  Não foi possível gerar nome o conteúdo da ficha para o lugar

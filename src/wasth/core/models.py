@@ -17,24 +17,46 @@ from unidecode import unidecode
 
 yaml = YAML(typ='safe')
 
-class Obra(frontmatter.Post):
-    """
-    Arcabouço dos dados e métodos das fichas de obras.
+class Thing(frontmatter.Post):
+    """Esta classe define o arcabouço de dados e os métodos comuns a todas as
+    classes de objetos do projeto WASTH: Work (obras de arquitetura), Place
+    (lugares), e Term (termos de vocabulário).
+    Ela é baseada na classe Post do pacote frontmatter, um objeto que contém um
+    bloco de metadados Post['metadata'], cujos elementos são também acessíveis
+    diretamente por suas palavras-chave, e um bloco de conteúdo Post['content'].
+
+    Esta classe apresenta dois métodos para criar um objeto:
     """
     def __init__(self, content: str = '', handler=None, **metadata) -> None:
         super().__init__(content=content, handler=handler, **metadata)
 
     @classmethod
-    def from_file(cls, f) -> "Obra":
-        """Gera o objeto a partir de um arquivo/ficheiro."""
+    def from_file(cls, f: str) -> "Thing":
+        """Gera o objeto a partir de um arquivo/ficheiro.
+
+        :param f: Caminho para um arquivo/ficheiro no sistema local, em formato Markdown com um bloco (frontmatter) em formato YAML.
+        :type f: str
+        :returns: Um objeto em forma de dicionário que pode ser convertido, no todo ou em parte, para vários outros tipos de objetos ou reexportado para Markdown.
+        :rtype: Thing
+        """
         post = frontmatter.load(f)
         return cls(content=post.content, handler=post.handler, **post.metadata)
 
     @classmethod
-    def from_post(cls, post: frontmatter.Post) -> "Obra":
-        """Gera o objeto a partir de um objeto frontmatter.Post"""
+    def from_post(cls, post: frontmatter.Post) -> "Thing":
+        """Gera o objeto a partir de um objeto frontmatter.Post
+
+        :param post: Um objeto já processado a partir de um documento Markdown com frontmatter YAML.
+        :type post: frontmatter.Post
+        :return: Um objeto em forma de dicionário que pode ser convertido, no todo ou em parte, para vários outros tipos de objetos ou reexportado para Markdown.
+        :rtype: Thing
+        """
         return cls(content=post.content, handler=post.handler, **post.metadata)
 
+
+class Work(Thing):
+    """Arcabouço dos dados e métodos das fichas de obras.
+    """
     def places(self) -> geojson.FeatureCollection | None:
         """Cria geoJSON a partir de 'spatial'"""
         spatial = self.get('spatial')
@@ -128,7 +150,7 @@ f":globe_with_meridians::x:  {geom_type} não é um tipo de geometria válido."
         data = yamale.make_data(content=content, parser=parser)
         yamale.validate(schema, data)
 
-class Lugar(Obra):
+class Place(Thing):
     """
     Define a ficha de lugares como variante da ficha de obra e fornece
     os métodos adicionais:
@@ -141,7 +163,7 @@ class Lugar(Obra):
         cls,
         feature: geojson.Feature,
         orcid: str | None = None
-    ) -> "Lugar | None":
+    ) -> "Place | None":
         """Gera fichas a partir de geojson.Feature
 
 Esta função recebe a base cartográfica do IBGE na escala 1:250.000 (BC250)
@@ -339,6 +361,9 @@ para evitar ambiguidades em nomes de lugares (por exemplo, Paraná vs Paranã).
                 return "-".join(slug)
         return None
 
+class Concept(Thing):
+    pass
+
 class LIDORepository(TypedDict, total=False):
     """Definição de um repositório (continente jurídico) nas fichas de obra"""
     type: Required[str]
@@ -482,11 +507,15 @@ def make_output_dir(output_dir: Path) -> Path:
     return output_dir
 
 def write_file(
-        post: frontmatter.Post | Obra | Lugar,
+        post: frontmatter.Post | Work | Place | Concept,
         output_dir: Path,
         filename: Path
 ) -> Path | None:
-    """Grava cada arquivo/ficheiro conforme nome e pasta recebidos."""
+    """Grava cada arquivo/ficheiro conforme nome e pasta recebidos.
+
+    :returns: Caminho onde o documento foi gravado, ou nada.
+    :rtype: Path
+    """
     try:
         dest = Path(output_dir) / Path(filename)
         frontmatter.dump(post, dest, sort_keys=False)
