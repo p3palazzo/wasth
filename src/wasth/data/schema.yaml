@@ -41,7 +41,7 @@ lido_term: regex('^http://terminology.lido-schema.org/lido([0-9]{5})$', name="LI
 
 typed_refs:
   type: enum('local', 'iri', 'uri', required=False)
-  concept: include('lido_term', required=False)
+  term: include('lido_term', required=False)
   refid: str(required=False)
   display: str(required=False)
   source: any(include('citation'), include('legal_body'), required=False)
@@ -76,7 +76,7 @@ repository:
 
 historic_place:
   type: enum("corporate", "geographic", "personal", "other")
-  term: include('typed_refs', required=False)
+  concept: include('typed_refs', required=False)
   display: str(required=False)
 
 gml_point:
@@ -129,7 +129,7 @@ size:
 
 material_tech:
   type: enum('medium', 'support', 'other', required=False)
-  term: include('typed_refs')
+  concept: include('typed_refs')
   extent: str()
   source: include('citation')
 
@@ -161,14 +161,14 @@ event_date:
 
 topic:
   display: str(required=False)
-  type: enum('descriptiveTopic', 'conceptTopic', 'iconographicTopic', 'otherTopic', required=False)
+  type: enum('descriptiveTopic', 'conceptTopic', 'iconographicTopic', 'otherTopic')
   extent: include('extent', required=False)
-  concept: include('typed_refs', required=False)
+  concept: include('typed_refs')
 
 object:
   display: str(required=False)
   display_object: str(required=False)
-  term: include('typed_refs', required=False)
+  concept: include('typed_refs', required=False)
   resource: include('media', required=False)
   object_type: include('lido_term', required=False) # http://terminology.lido-schema.org/objectType
   object_note: list(include('note'), required=False) # LIDO-Handbuch: Describes how the related object is related or relevant to this object.
@@ -189,8 +189,8 @@ resource:
   rights: list(include('right'))
 
 right:
-  term: include('typed_refs', required=False)
-  concept: enum('generic', 'specific', required=False) # http://terminology.lido-schema.org/rightsType_type
+  concept: include('typed_refs', required=False)
+  type: enum('generic', 'specific', required=False) # http://terminology.lido-schema.org/rightsType_type
   temporal:
     earliest_date: day(required=False)
     latest_date: day(required=False)
@@ -198,11 +198,11 @@ right:
 
 legal_body:
   type: enum('personal', 'corporate', 'family', 'other', required=False)
-  term: include('typed_refs', required=False)
+  concept: include('typed_refs', required=False)
   display: str(required=False)
 
 actor:
-  term: include('typed_refs', required=False)
+  concept: include('typed_refs', required=False)
   display: str(required=False)
   type: enum('personal', 'corporate', 'family', 'other', required=False)
   role: include('typed_refs')
