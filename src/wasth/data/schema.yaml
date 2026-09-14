@@ -193,7 +193,8 @@ resource:
   description: str(required=False)
   perspective: int(min=0, max=9) # ISO 19650-2 view codes
   unit: include('typed_refs', required=False) # mm
-  source: list(include('citation'), required=False)
+  source: list(include('legal_body'), required=False)
+  citation: list(include('citation'), required=False)
   credit: include('orcid')
   date: include('temporal')
   rights: list(include('right'))
