@@ -1,7 +1,7 @@
 id: str(matches=regex(r'^([2-9CFGHJMPQRVWX]{8})\+([2-9CFGHJMPQRVWX]{3})$', name='OLC Plus Code 11')) # LIDO:recordID
 excerpt: str()
 date: day(min='2022-01-01') # LIDO:recordMetadataDate
-author: regex('([0-9X]{4})-([0-9X]{4})-([0-9X]{4})-([0-9X]{4})', name='ORCID')
+author: include('orcid')
 title: str(min=3, max=75)
 # required=False enums will be given a default value at runtime
 title_type: enum("brandName", "cited", "creator", "descriptive", "former", "inscribed", "owner", "popular", "repository", "translated", "other", required=False) # descriptive
@@ -39,6 +39,8 @@ header: include('header_map', required=False)
 # LIDO:description is the content of the Markdown document.
 ---
 url: regex(r'^https?:\/\/(?:([\w\-]+\.)+[\w\-]+)(?:\/[^\s]*)?$', name='URL')
+
+orcid: regex('([0-9X]{4})-([0-9X]{4})-([0-9X]{4})-([0-9X]{4})', name='ORCiD')
 
 coordinates: regex('^[0-9,\.\[\] ]+$', name='coordinates')
 
@@ -181,13 +183,15 @@ object:
   source: list(include('citation'), required=False)
 
 resource:
-  id: include('typed_refs', required=False) # Provisional
-  representation: list(include('media'), required=False)
+  id: include('typed_refs', required=False) # QUASE sempre obrigatório, arqtrad/desenho
+  preview: list(include('media'), required=False)
+  provided: list(include('media'), required=False)
   description: str(required=False)
   perspective: int(min=0, max=9) # ISO 19650-2 view codes
-  temporal: event_date(required=False)
+  unit: include('typed_refs', required=False) # mm
   source: list(include('citation'), required=False)
-  credit: include('legal_body', required=False)
+  credit: include('orcid')
+  date: day()
   rights: list(include('right'))
 
 right:
@@ -214,11 +218,11 @@ extent: include('typed_refs') # Provisional
 media:
   type: include('lido_term', required=False) # http://terminology.lido-schema.org/resourceRepresentation_type
   teaser: include('url', required=False)
-  format: str()
   href: include('url')
+  format: include('typed_refs')
   measurements: list(include('size'), required=False)
-  caption: str()
-  alt: str(min=2, required=False)
+  caption: str(required=False)
+  alt: str(required=False)
   credit: str(required=False)
   rights: list(include('right'), required=False)
 
