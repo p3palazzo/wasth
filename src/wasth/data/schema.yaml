@@ -184,7 +184,7 @@ object:
 
 resource:
   id: include('typed_refs', required=False) # QUASE sempre obrigatório, arqtrad/desenho
-  type: include('typed_refs')
+  #type: include('lido_term', required=False) # http://terminology.lido-schema.org/resourceRepresentation_type
   rel_type: enum('planFor', 'modelFor', 'imageOf', 'preparatoryFor', 'prototypeFor', 'studyFor', required=False) # planFor
   preview_image: include('media', required=False)
   provided_image: list(include('media'), required=False)
@@ -210,20 +210,18 @@ legal_body:
   name: include('typed_refs', required=False) # antigo concept
 
 actor:
-  name: include('typed_refs', required=False) # antigo concept
   type: enum('personal', 'corporate', 'family', 'other', required=False) # personal
+  name: include('typed_refs', required=False) # antigo concept
   role: include('typed_refs')
   qualifier: list(include('typed_refs'), required=False)
   extent: list(include('typed_refs'), required=False)
-  source: include('citation')
+  source: include('citation', required=False)
 
 extent: include('typed_refs') # Provisional
 
 media:
-  type: include('lido_term', required=False) # http://terminology.lido-schema.org/resourceRepresentation_type
-  teaser: include('url', required=False)
-  href: include('url')
   format: include('typed_refs')
+  href: include('url')
   measurements: list(include('size'), required=False)
   caption: str(required=False)
   alt: str(required=False)
