@@ -45,6 +45,7 @@ def valida(
     ] = "."
 ) -> None:
     """Valida as fichas no arquivo/ficheiro ou pasta indicado pelo usuário
+    (ainda não funcional).
 
     :param files_path: Um caminho de arquivo/ficheiro ou pasta.
     """
@@ -112,7 +113,7 @@ O site do projeto se encontra em
 <https://tradicional.arq.br>.
 
 Para instruções, digitar o comando:
-uv run washt --help
+uv run wasth --help
         """)
 
 if __name__ == "__main__":
