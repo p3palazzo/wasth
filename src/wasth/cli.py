@@ -8,7 +8,7 @@ import typer
 from pyorcid_checksum import ORCID_Checksum
 from rich import print as rprint
 
-from wasth.core import models, valida_yaml
+from wasth.core import geoprocessa, models, valida_yaml
 
 app = typer.Typer()
 
@@ -36,7 +36,7 @@ def valida(
             Place (lugar) ou Concept (vocabulário)."
         )
     ] = "Work",
-    user_path: Annotated[
+    files_path: Annotated[
         str, typer.Argument(
             help="Um caminho, absoluto ou relativo ao diretório atual, \
             para um arquivo/ficheiro ou uma pasta contendo documentos \
@@ -46,18 +46,56 @@ def valida(
 ) -> None:
     """Valida as fichas no arquivo/ficheiro ou pasta indicado pelo usuário
 
-    :param user_path: Um caminho de arquivo/ficheiro ou pasta.
+    :param files_path: Um caminho de arquivo/ficheiro ou pasta.
     """
     io_paths = models.paths(
-        args = [user_path, user_path],
+        args = [files_path, files_path],
         overwrite=True
     )
-    rprint(io_paths)
     for i in io_paths.get('filelist'):
-        valida_yaml.f_schema(i, object_class)
+        valida_yaml.valida_yaml_schema(i, object_class)
 
 @app.command()
-def main() -> None:
+def geojson(
+    in_files: Annotated[
+        str, typer.Argument(
+            help="Um caminho, absoluto ou relativo ao diretório atual, \
+            para um arquivo/ficheiro ou uma pasta contendo documentos \
+            a serem processados. Por padrão é o diretório atual."
+        )
+    ] = ".",
+    out_file: Annotated[
+        str, typer.Argument(
+            help="Caminho e nome do arquivo a ser gravado, por padrão \
+            ./wasth.geojson."
+        )
+    ] = "wasth.geojson"
+) -> Path | None:
+    """Converte fichas em um documento geoJSON que pode ser carregado no QGIS."""
+    io_paths = models.paths(
+        in_path = Path(in_files),
+        out_path = Path(out_file)
+    )
+    things = []
+    filelist = io_paths.get('filelist')
+    if not filelist:
+        raise OSError("Nenhum conteúdo para ingerir.")
+    for i in io_paths.get('filelist'):
+        thing = models.Thing.from_file(i)
+        location = thing.location()
+        if location:
+            things.append(thing)
+    rprint(f"{len(things)} objetos georreferenciados encontrados.")
+    out_path = io_paths.get('output_path')
+    geoprocessa.locations(things, out_path)
+    if out_path.is_file():
+        return out_path
+    else:
+        rprint(":warning: Nenhum objeto foi gravado!")
+        return None
+
+@app.callback(invoke_without_command=True)
+def main(ctx: typer.Context) -> None:
     """
     Esta é a tela de acesso à interfaz de processamento das fichas dos
     Documentários de arquitetura tradicional.
@@ -74,9 +112,7 @@ O site do projeto se encontra em
 <https://tradicional.arq.br>.
 
 Para instruções, digitar o comando:
-uv run typer src/wasth/cli.py run --help
-
-A qualquer momento, envie CTRL-C para sair sem gravar.
+uv run washt --help
         """)
 
 if __name__ == "__main__":

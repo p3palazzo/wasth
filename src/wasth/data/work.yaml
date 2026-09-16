@@ -28,7 +28,7 @@ identifiers: list(include('typed_refs'), required=False) # lido:publishedID
 titles: list(include('alternate_title'), required=False)
 inscriptions: list(include('inscription'), required=False)
 format: include('format_map', required=False)
-events: list(include('event'), required=False)
+temporal: list(include('event'), required=False)
 subject: list(include('topic'), required=False)
 relation: list(include('object'), required=False)
 work_rights: list(include('right'), required=False)
@@ -159,13 +159,13 @@ event:
   media: list(include('media'), required=False)
 
 event_date: # revisar timeline.njk, LIDO e Signore (1997). 
-  #year: int()
-  #month: int(min=1, max=12, required=False)
-  #day: int(min=1, max=31, required=False)
   earliest_date: day(required=False)
   latest_date: day(required=False)
   display_date: str(required=False)
   type: enum("estimated", "exact")
+  #year: int()
+  #month: int(min=1, max=12, required=False)
+  #day: int(min=1, max=31, required=False)
 
 topic:
   display: str(required=False)
@@ -202,7 +202,7 @@ resource:
 right:
   concept: include('typed_refs', required=False)
   type: enum('generic', 'specific', required=False) # http://terminology.lido-schema.org/rightsType_type
-  temporal: event_date(required=False)
+  temporal: include('event_date', required=False)
   holder: include('legal_body', required=False)
 
 legal_body:

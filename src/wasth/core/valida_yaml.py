@@ -65,16 +65,17 @@ def f_lint(f) -> list:
         yaml_lint_list.append(p_print)
     return yaml_lint_list
 
-def f_schema(f: Path, object_class: str) -> None:
+def valida_yaml_schema(f: Path, object_class: str) -> None:
     """Deve receber o frontmatter extraído de f_read"""
-    if object_class == "Work":
-        yamale_schema = "work.yaml"
-    elif object_class == "Place":
-        yamale_schema = "place.yaml"
-    elif object_class == "Concept":
-        yamale_schema = "concept.yaml"
-    else:
-        yamale_schema = "thing.yaml"
+    match object_class:
+        case "Work":
+            yamale_schema = "work.yaml"
+        case "Place":
+            yamale_schema = "place.yaml"
+        case "Concept":
+            yamale_schema = "concept.yaml"
+        case _:
+            yamale_schema = "thing.yaml"
     # https://www.w3reference.com/blog/relative-file-paths-in-python-packages/
     with resources.as_file(
         resources.files("wasth.data").joinpath(yamale_schema)
@@ -83,7 +84,9 @@ def f_schema(f: Path, object_class: str) -> None:
     schema = yamale.make_schema(content=schema, parser='ruamel')
     with f.open('r') as file:
         document = file.read()
-        metadata = frontmatter.loads(document)
+        post = frontmatter.loads(document)
+        if not post.metadata:
+            raise ValueError(f"{f} não contém metadados a validar.")
     data = yamale.make_data(content=metadata, parser='ruamel')
     try:
         yamale.validate(schema, data)
@@ -119,7 +122,7 @@ def f_valida(files: list[str]) -> int:
                 for p in lint_result:
                     rprint(p)
             metadata = f_read(file)['metadata']
-            f_schema(metadata)
+            valida_yaml_schema(metadata)
         except Exception as e:
             had_error = True
             rprint(f"""

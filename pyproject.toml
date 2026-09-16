@@ -28,7 +28,7 @@ dependencies = [
 ]
 
 [project.scripts]
-wasth = "wasth.cli:main"
+wasth = "wasth.cli:app"
 wasth-web = "wasth.web:main"
 
 [build-system]

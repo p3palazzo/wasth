@@ -248,7 +248,7 @@ A função realiza as seguintes operações:
                         'refid': 'http://www.opengis.net/def/crs/EPSG/0/4326',
                         'display': 'EPSG:4326 WGS84',
                     },
-                    'source': {
+                    'in_path': {
                         'type': 'corporate',
                         'display': 'IBGE',
                         'term': {
@@ -268,7 +268,7 @@ A função realiza as seguintes operações:
                         'type': 'local',
                         'refid': props['geocodigo'].strip(),
                     },
-                    'source': {
+                    'in_path': {
                         'type': 'corporate',
                         'display': 'IBGE',
                         'term': {
@@ -382,7 +382,7 @@ class LIDORepository(TypedDict, total=False):
 class InOutPaths(TypedDict):
     """Contém uma lista de arquivos/ficheiros de entrada e uma pasta de saída."""
     filelist: list[Path]
-    output_dir: Path
+    output_path: Path
 
 def repo_label(repo: LIDORepository) -> str | None:
     """Gera nome do repositório para uso em slugs."""
@@ -446,66 +446,62 @@ def pt_ascii(text: str) -> str:
     return text.strip("_-")
 
 def paths(
-    args: list[str] | None = None,
-    prompt: bool = False,
+    in_path: Path | None = None,
+    out_path: Path | None = None,
     overwrite: bool | None = None,
     filetype: str = '.md'
-) -> InOutPaths | None:
+) -> InOutPaths:
     """Gera os nomes de arquivos de entrada e a pasta de saída a partir da
     entrada do usuário.
 
     :param args: Primeiro argumento: caminho de entrada (arquivo/ficheiro ou pasta)
     Segundo argumento: caminho de saída (pasta).
     :returns: Um dicionário (TypedDict) cujo primeiro elemento é o caminho de
-    entrada e o segundo é a pasta de saída.
+    entrada e o segundo, opcional, é a pasta de saída.
     :rtype: InOutPaths
     """
-    if not args:
-        if 2 <= len(sys.argv) <= 3 and not prompt:
-            args = sys.argv[1:]
-        elif len(args) > 2:
-            raise OSError("Número excessivo de argumentos.")
-        else:
-            args = input(f"""
+    if not in_path:
+        raw = input(f"""
 Informar um caminho de arquivo/ficheiro ou pasta de leitura.
 Por padrão será a pasta atual:
 
-$:{Path.cwd()}/""").strip().split()
-    if args[0]:
-        source = Path(args[0])
-    else:
-        source = Path.cwd()
-    if source.is_dir():
+""").strip()
+        in_path = Path(raw) if raw else Path.cwd()
+
+    if in_path.is_dir():
         filelist = [
-            p for p in source.iterdir() if p.is_file()
+            p for p in in_path.iterdir() if p.is_file()
             and p.suffix.casefold() == filetype.casefold()
             and p.stem != "README"
         ]
+        in_path_dir = in_path
         rprint(f"""
-{len(filelist)} documentos no formato '{filetype}' encontrado(s) em {source.resolve()}.
+{len(filelist)} documentos no formato '{filetype}' encontrado(s) em {in_path.resolve()}.
         """)
-    elif source.is_file() and source.suffix.casefold() == filetype.casefold():
-        filelist = [source]
-    if len(args) == 2 and Path(args[1]).is_file():
-        raise OSError("O segundo argumento deve ser uma pasta ou ser omitido.")
-    if len(args) == 2 and Path(args[1]).is_dir():
-        output_dir = Path(args[1])
-    if len(args) == 1:
-        if overwrite is None:
-            ask_overwrite = input(
-                "⚠️  Sobrescrever arquivos/ficheiros existentes? s/n\n"
-            ).strip().casefold()
-            overwrite = ask_overwrite in { "s", "sim", "y", "yes", "sobrescrever" }
-        if overwrite is True:
-            output_dir = source.resolve().parent
-        else:
-            output_dir = Path(input(f"""
-Informar um caminho de pasta de gravação.
-$:{Path.cwd()}"""))
-    if not output_dir or not filelist:
-        rprint("Operação cancelada.")
-        return None
-    return { 'filelist': filelist, 'output_dir': output_dir}
+    elif in_path.is_file() and in_path.suffix.casefold() == filetype.casefold():
+        filelist = [in_path]
+        in_path_dir = in_path.resolve().parent
+    else:
+        raise OSError(
+f"Nenhum documento no formato '{filetype}' encontrado em {in_path.resolve()}"
+        )
+
+    if not out_path:
+        raw = input(f"""
+Informar um caminho de gravação.
+Por padrão será a mesma pasta ou arquivo/ficheiro de entrada:
+
+""")
+        out_path = Path(raw) if raw else in_path
+
+    if out_path == (in_path or in_path_dir) and not overwrite:
+        ask_overwrite = input(
+            "⚠️  Sobrescrever se existente? s/n\n"
+        ).strip().casefold()
+        overwrite = ask_overwrite in { "s", "sim", "y", "yes", "sobrescrever" }
+        if overwrite is False:
+            raise ValueError("Operação cancelada pelo usuário.")
+    return { 'filelist': filelist, 'output_path': out_path}
 
 def make_output_dir(output_dir: Path) -> Path:
     """Cria pasta de saída ou retorna erro."""
@@ -530,7 +526,7 @@ def write_file(
     :rtype: Path
     """
     try:
-        dest = Path(output_dir) / Path(filename)
+        dest = output_dir / filename
         frontmatter.dump(post, dest, sort_keys=False)
         rprint(f"""
 :card_index:  {post.get('id')} --- [bold]{post.get('title')}[/bold]

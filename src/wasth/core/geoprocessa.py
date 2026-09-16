@@ -14,14 +14,17 @@ from wasth.core import models
 
 
 def locations(
-    things: list[models.Thing]
+    things: list[models.Thing],
+    output_file: Path | None = None,
+    encoding: str = "utf-8"
 ) -> geojson.FeatureCollection | None:
     """
     Gera uma coleção de objetos geoJSON a partir dos objetos ingeridos.
     Esta função pede os objetos já processados.
     Para passar uma pasta ou um arquivo/ficheiro, usar outra função antes.
 
-    :param things: Objetos do WASTH que tenham georreferenciamento, passados enquanto tais
+    :param things: Objetos do WASTH que tenham georreferenciamento,
+    passados enquanto tais
     :return: uma coleção de objetos geoJSON com a locação e o nome de cada objeto.
     """
     features = []
@@ -31,7 +34,7 @@ def locations(
         if not isinstance(location, geojson.Point) or not isinstance(title, str):
             continue
         feature = geojson.Feature(
-            geometry = thing.location,
+            geometry = thing.location(),
             properties = { "title": title }
         )
         if feature.is_valid:
@@ -39,30 +42,18 @@ def locations(
     if not features:
         return None
     collection = geojson.FeatureCollection(features)
+    if output_file:
+        try:
+            directory = output_file.resolve().parent
+            directory.mkdir(exist_ok=True, parents=True)
+            with output_file.open('w', encoding=encoding) as f:
+                geojson.dump(collection, f)
+            rprint(f":page_facing_up:  '{output_file}' gravado com sucesso.")
+        except Exception as e:
+            raise OSError(f"""
+    :x:  Erro na escrita de '{str(output_file)}': {e}
+            """) from e
     return collection if collection.is_valid else None
-
-def f_write(
-    collection: geojson.FeatureCollection,
-    output_file: Path,
-    encoding: str = 'utf-8',
-) -> None:
-    """
-    Escreve a coleção geojson.FeatureCollection para um arquivo/ficheiro.
-
-    :param collection: Uma coleção gerada pela função locations()
-    :param output_file: Um caminho Path
-    :param encoding: Por padrão, a codificação de caracteres é UTF-8
-    """
-    try:
-        directory = Path(output_file).resolve().parent
-        directory.mkdir(exist_ok=True, parents=True)
-        with output_file.open('w', encoding=encoding) as f:
-            geojson.dump(collection, f)
-        rprint(f":page_facing_up:  '{output_file}' gravado com sucesso.")
-    except Exception as e:
-        raise OSError(f"""
-:x:  Erro na escrita de '{str(output_file)}': {e}
-        """) from e
 
 def main(
     args: models.InOutPaths | None = None,
@@ -90,8 +81,8 @@ def main(
     output_filename = input("""
     Escolha um nome de arquivo para gravar, por padrão 'wasth.geojson':
     """).strip() or 'wasth.geojson'
-    output_file = Path(args['output_dir']) / Path(output_filename)
-    f_write(collection, output_file=output_file, encoding=encoding)
+    output_file = args['output_path']
+    f_write(collection, output_file, encoding=encoding)
     return output_file
 
 if __name__ == "__main__":
