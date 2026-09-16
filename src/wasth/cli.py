@@ -13,22 +13,6 @@ from wasth.core import geoprocessa, models, valida_yaml
 app = typer.Typer()
 
 @app.command()
-def orcid(orcid: str) -> str:
-    """Recebe, valida e normaliza um ORCiD inserido pelo usuário
-
-    :param orcid: o número do ORCiD ou o URI completo.
-    """
-    orcid = orcid.strip()
-    checker = ORCID_Checksum()
-    try:
-        valida = checker.check_orcid_checksum(orcid)
-    except Exception as e:
-        raise typer.BadParameter(f":x:  Erro de validação: {e}.")
-    if valida is False:
-        raise typer.BadParameter(":x:  ORCiD inválido.")
-    return checker.parse_orcid(orcid)
-
-@app.command()
 def valida(
     object_class: Annotated[
         str, typer.Argument(

@@ -98,7 +98,6 @@ def orcid_checksum(orcid: str) -> str | None:
     checker = ORCID_Checksum()
     valida = checker.check_orcid_checksum(orcid)
     if valida is False:
-        rprint(f"ORCiD {orcid} inválido.")
         return None
     return checker.parse_orcid(orcid)
 
