@@ -10,10 +10,15 @@ from typing import Required, TypedDict
 import frontmatter
 import geojson
 import yamale
+from geojson import utils as geojson_utils
 from openlocationcode import openlocationcode
+from rdflib import BNode, Graph, Literal, Namespace, URIRef
+from rdflib.namespace import DCTERMS, RDF, RDFS, SKOS
 from rich import print as rprint
 from ruamel.yaml import YAML
 from unidecode import unidecode
+
+from wasth.core import normalize
 
 yaml = YAML(typ='safe')
 
@@ -59,6 +64,66 @@ class Thing(frontmatter.Post):
         :rtype: Thing
         """
         return cls(content=post.content, handler=post.handler, **post.metadata)
+
+    def validation_errors(self) -> dict | None:
+        """Verifica se a ficha tem título, autor, data e id
+
+        :returns: True se a ficha estiver em ordem, False se tiver problemas.
+        :rtype: bool
+        """
+        required = ("title", "author", "date", "id")
+        missing = [
+            key for key in required
+            if key not in self.metadata
+            or self.metadata[key] in (None, "")
+        ]
+        errors = {}
+
+        title = self.get('title')
+        if "title" not in missing and not isinstance(title, str):
+            errors['title'] = f"Formato inválido: {type(title)}."
+
+        author = self.get('author')
+        if "author" not in missing and not isinstance(author, str):
+            errors['author'] = f"Formato inválido: {type(author)}."
+        if isinstance(author, str):
+            author_checksum = normalize.orcid_checksum(author) if author else None
+            if author_checksum:
+                author = author_checksum
+        else:
+            errors['author'] = f"ORCiD inválido: {author}."
+
+        meta_date = self.get('date')
+        if "date" not in missing:
+            if not isinstance(meta_date, str):
+                errors['date'] = f"Formato inválido: {type(meta_date)}."
+            elif isinstance(meta_date, str):
+                try:
+                    date.fromisoformat(meta_date)
+                except ValueError as e:
+                    errors['date'] = (
+                        f"{meta_date} Não é uma data válida: {e}."
+                    )
+
+        meta_id = self.get('id')
+        if "id" not in missing:
+            if not isinstance(meta_id, str):
+                errors['id'] = f"Formato inválido: {type(meta_id)}."
+            elif self.get('spatial'):
+                location = self.location()
+                if isinstance(location, geojson.Point):
+                    check_id = self.olc_id()
+                    if meta_id != check_id:
+                        errors['id'] = (
+f"ID existente {meta_id} difere do ID computado {check_id}."
+                        )
+
+        if missing:
+            errors['missing'] = missing
+        return errors if errors else None
+
+    def valid(self) -> bool:
+        return not self.validation_errors()
 
     def location(self) -> geojson.Point | None:
         """Cria um objeto ponto geográfico a partir de `spatial.site.location`.
@@ -115,9 +180,6 @@ class Thing(frontmatter.Post):
         else:
             return None
 
-class Work(Thing):
-    """Arcabouço dos dados e métodos das fichas de obras.
-    """
     def olc_id(self) -> str | None:
         """
         Processa entradas de georreferenciamento
@@ -125,21 +187,17 @@ class Work(Thing):
         Gera ID no formato Open Location Code a partir da latitude e longitude
         inseridas na ficha ou na interface.
         """
-        spatial = self.get('spatial', [])
-        if spatial is None:
+        location = self.location()
+        if not isinstance(location, geojson.Point):
             return None
-        for place in spatial:
-            if place.get('type') != "site":
-                continue
-            location = place.get('location')
-            if not location:
-                continue
-            lat = location.get('lat')
-            lon = location.get('lon')
-            if lat is None or lon is None:
-                continue
-            return openlocationcode.encode(lat, lon, 11)
+        (lon, lat) = geojson_utils.coords(location)
+        if lat is None or lon is None:
+            return None
+        return openlocationcode.encode(lat, lon, 11)
 
+class Work(Thing):
+    """Arcabouço dos dados e métodos das fichas de obras.
+    """
     def valida(
         self,
         schema_file: str = "data/schema.yaml",
@@ -368,6 +426,10 @@ A função realiza as seguintes operações:
         return None
 
 class Concept(Thing):
+    """Define um conceito de vocabulário controlado compatível com SKOS:THES.
+
+    Fornece métodos para importar e exportar RDF:XML e JSON-LD.
+    """
     pass
 
 class LIDORepository(TypedDict, total=False):
