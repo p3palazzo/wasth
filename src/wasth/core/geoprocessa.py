@@ -8,38 +8,52 @@ Não temos previsão de implementar o caminho inverso
 from pathlib import Path
 
 import geojson
-from rich import print
+from rich import print as rprint
 
 from wasth.core import models
 
 
-def collect_features(
-        features: list[geojson.Feature]
+def locations(
+    things: list[models.Thing],
+    output_file: Path | None = None,
+    encoding: str = "utf-8"
 ) -> geojson.FeatureCollection | None:
     """
     Gera uma coleção de objetos geoJSON a partir dos objetos ingeridos.
-    """
-    collection = geojson.FeatureCollection(features)
-    return collection
+    Esta função pede os objetos já processados.
+    Para passar uma pasta ou um arquivo/ficheiro, usar outra função antes.
 
-def f_write(
-    collection: geojson.FeatureCollection,
-    output_file: Path,
-    encoding: str = 'utf-8',
-) -> None:
+    :param things: Objetos do WASTH que tenham georreferenciamento,
+    passados enquanto tais
+    :return: uma coleção de objetos geoJSON com a locação e o nome de cada objeto.
     """
-    Escreve a coleção geojson.FeatureCollection para um arquivo/ficheiro.
-    """
-    try:
-        directory = Path(output_file).resolve().parent
-        directory.mkdir(exist_ok=True, parents=True)
-        with output_file.open('w', encoding=encoding) as f:
-            geojson.dump(collection, f)
-        print(f":page_facing_up:  Arquivo '{output_file}' gravado com sucesso.")
-    except Exception as e:
-        raise OSError(f"""
-:x:  Erro na escrita do arquivo '{str(output_file)}': {e}
-        """) from e
+    features = []
+    for thing in things:
+        location = thing.location()
+        title = thing.get('title')
+        if not isinstance(location, geojson.Point) or not isinstance(title, str):
+            continue
+        feature = geojson.Feature(
+            geometry = thing.location(),
+            properties = { "title": title }
+        )
+        if feature.is_valid:
+            features.append(feature)
+    if not features:
+        return None
+    collection = geojson.FeatureCollection(features)
+    if output_file:
+        try:
+            directory = output_file.resolve().parent
+            directory.mkdir(exist_ok=True, parents=True)
+            with output_file.open('w', encoding=encoding) as f:
+                geojson.dump(collection, f)
+            rprint(f":page_facing_up:  '{output_file}' gravado com sucesso.")
+        except Exception as e:
+            raise OSError(f"""
+    :x:  Erro na escrita de '{str(output_file)}': {e}
+            """) from e
+    return collection if collection.is_valid else None
 
 def main(
     args: models.InOutPaths | None = None,
@@ -54,27 +68,21 @@ def main(
     if not args:
         return None
     files = args['filelist']
-    features = []
+    things = []
     for f in files:
-        obra = models.Obra.from_file(f)
-        places = obra.places()
-        if not places:
-            return None
-        for place in places['features']:
-            if isinstance(place, geojson.Point) and\
-                place['properties']['type'] == 'site':
-                features.append(place)
-                break
-    if len(features) == 0:
+        thing = models.Thing.from_file(f)
+        if isinstance(thing, models.Thing):
+            things.append(thing)
+    if not things:
         return None
-    collection = collect_features(features)
+    collection = locations(things)
     if not collection:
         return None
     output_filename = input("""
     Escolha um nome de arquivo para gravar, por padrão 'wasth.geojson':
     """).strip() or 'wasth.geojson'
-    output_file = Path(args['output_dir']) / Path(output_filename)
-    f_write(collection, output_file=output_file, encoding=encoding)
+    output_file = args['output_path']
+    f_write(collection, output_file, encoding=encoding)
     return output_file
 
 if __name__ == "__main__":

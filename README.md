@@ -16,11 +16,12 @@ A plataforma de teste deste aplicativo deve ser configurada com [UV]:
 ```
 uv sync
 uv pip install -e .
-uv run wasth [PATH...]
+uv run wasth <comando> [PATH...]
 ```
 
-No momento, apenas `wasth` (alias para `wasth.normalize`)
-`wasth.normalize`, e `wasth.valida_xml` funcionam parcialmente.
+Para obter ajuda, `uv run wasth --help`.
+
+No momento, apenas `wasth geojson` funciona.
 `[PATH]` é relativo ao diretório de execução do comando e
 aceita uma sequência de nomes de arquivos `*.md` separados por espaços
 ou um nome de pasta contendo um ou mais arquivos, dependendo do comando.

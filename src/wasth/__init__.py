@@ -11,7 +11,7 @@ Como usar:
 
 __version__ = "0.2.1"
 
-__all__ = ["Obra", "f_valida"]
+__all__ = ["Work", "f_valida"]
 
-from .core.models import Obra
+from .core.models import Work
 from .core.valida_yaml import f_valida
