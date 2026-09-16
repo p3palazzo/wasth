@@ -9,7 +9,8 @@ from copy import deepcopy
 from pathlib import Path
 
 import frontmatter
-from rich import print
+from pyorcid_checksum import ORCID_Checksum
+from rich import print as rprint
 from ruamel.yaml import YAML
 
 from wasth.core import models
@@ -51,19 +52,11 @@ f":book:  {bibliographic_citation} não contém uma chave de citação para {pos
                     else "@" + citation['relids']
                 )
             else:
-                print(
+                rprint(
 f":warning:  O registro {citation} não contém um campo com chave de citação, ignorando..."
                 )
         if len(citekeys) > 0:
             post['bibliographicCitation'] = citekeys
-
-    coverage = post.get('coverage')
-    if isinstance(coverage, dict):
-        if coverage.get('spatial') is not None and post.get('spatial') is None:
-            post['spatial'] = deepcopy(coverage['spatial'])
-        if coverage.get('temporal') is not None and post.get('temporal') is None:
-            post['temporal'] = deepcopy(coverage['temporal'])
-        del post['coverage']
 
     spatial = post.get('spatial')
     post_format = post.get('format')
@@ -94,59 +87,20 @@ f":warning:  O registro {citation} não contém um campo com chave de citação,
             'measurements': measurements,
         }
 
-    places = []
-    if isinstance(spatial, dict):
-        location = spatial.get('location', {})
-        if location.get('locationHistoric') is not None:
-            post['location_historic'] = location['locationHistoric']
-
-        if location.get('name') is not None:
-            place_location = {
-                'type': 'site',
-                'term': location.get('state'),
-                'location': deepcopy(location)
-            }
-            place_display = [location.get('name', {}).get('text'), location.get('city')]
-            place_location['display'] = '\n'.join(part for part in place_display if part)
-
-            place_location['location'].pop('name', None)
-            place_location['location'].pop('city', None)
-            place_location['location'].pop('state', None)
-            place_location['location'].pop('country', None)
-            place_location['location'].pop('locationHistoric', None)
-
-            if place_location['location'].get('long') is not None:
-                place_location['location']['lon'] = place_location['location'].pop('long')
-            places.append(place_location)
-
-        place_extent = spatial.get('extent', {})
-        if isinstance(place_extent, dict) and place_extent.get('coordinates') is not None:
-            place_footprint = {
-                'type': 'site',
-                'extent': {
-                    'type': place_extent['type'],
-                    'coordinates': str(place_extent['coordinates'])
-                    # Otherwise it interprets WKT coordinates as nested lists
-                },
-            }
-            if isinstance(place_extent['projection'], str)\
-                and place_extent.get('projection') is not None:
-                place_footprint['srsName'] = {
-                    'type': 'uri',
-                    'display': place_extent['projection']
-                }
-                if place_extent['projection'] == 'EPSG:4326 WGS84':
-                    place_footprint['srsName']['refid']\
-                    = 'http://www.opengis.net/def/crs/EPSG/0/4326'
-            if place_extent.get('source') is not None:
-                place_footprint['source'] = {
-                    'display': place_extent['source'],
-                    'type': 'corporate'
-                }
-            places.append(place_footprint)
-
-        post['spatial'] = deepcopy(places) if places else None
     return post
+
+def orcid_checksum(orcid: str) -> str | None:
+    """Recebe, valida e normaliza um ORCiD inserido pelo usuário
+
+    :param orcid: o número do ORCiD ou o URI completo.
+    """
+    orcid = orcid.strip()
+    checker = ORCID_Checksum()
+    valida = checker.check_orcid_checksum(orcid)
+    if valida is False:
+        rprint(f"ORCiD {orcid} inválido.")
+        return None
+    return checker.parse_orcid(orcid)
 
 def make_id(work: models.Work, overwrite: bool | None = None) -> models.Work:
     "Roda o método de geração de ID Open Location no objeto models.Work"
@@ -190,7 +144,7 @@ f":x:  Arquivo/ficheiro não encontrado em {str(source_file)} ou não é Markdow
     work = make_id(work)
     with source_file.open('w', encoding=enc) as f:
         frontmatter.dump(work, f, sort_keys=False)
-        print(
+        rprint(
 f":card_index:  ID: {make_id(work).get('id')} gravado em {str(source_file)}."
         )
     return work

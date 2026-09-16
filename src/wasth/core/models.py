@@ -157,8 +157,7 @@ class Work(Thing):
         yamale.validate(schema, data)
 
 class Place(Thing):
-    """
-    Define a ficha de lugares como variante da ficha de obra e fornece
+    """Define a ficha de lugares como variante da ficha de obra e fornece
     os métodos adicionais:
 
     - Gera ou atualiza a partir da base cartográfica do IBGE;
