@@ -19,11 +19,18 @@ uv pip install -e .
 uv run wasth <comando> [PATH...]
 ```
 
+### Comandos
+
+- `wasth geojson [ARQUIVO OU PASTA] [ARQUIVO DE SAÍDA]`
+  gera um arquivo .geojson que pode ser aberto no QGIS,
+  a partir das fichas de edificações ou lugares em formato Markdown
+  no arquivo ou pasta indicado.
+
 Para obter ajuda, `uv run wasth --help`.
 
 No momento, apenas `wasth geojson` funciona.
 `[PATH]` é relativo ao diretório de execução do comando e
-aceita uma sequência de nomes de arquivos `*.md` separados por espaços
+aceita um nome de arquivo `*.md`
 ou um nome de pasta contendo um ou mais arquivos, dependendo do comando.
 
 
