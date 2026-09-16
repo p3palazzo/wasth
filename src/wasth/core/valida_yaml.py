@@ -5,13 +5,14 @@ Verifica se o arquivo/ficheiro existe, e se a sua sintaxe é válida.
 
 import os
 import sys
+from importlib import resources
 from pathlib import Path
 
 import frontmatter
 import yamale
 import yamllint.config
 import yamllint.linter
-from rich import print
+from rich import print as rprint
 from ruamel.yaml import YAML
 
 from wasth.core import models
@@ -64,24 +65,37 @@ def f_lint(f) -> list:
         yaml_lint_list.append(p_print)
     return yaml_lint_list
 
-def f_schema(f):
+def f_schema(f: Path, object_class: str) -> None:
     """Deve receber o frontmatter extraído de f_read"""
-    this_dir = os.path.abspath(os.path.dirname(__file__))
-    with open(os.path.join(this_dir, '../data/schema.yaml'), 'r') as schema_file:
-        schema = schema_file.read()
+    if object_class == "Work":
+        yamale_schema = "work.yaml"
+    elif object_class == "Place":
+        yamale_schema = "place.yaml"
+    elif object_class == "Concept":
+        yamale_schema = "concept.yaml"
+    else:
+        yamale_schema = "thing.yaml"
+    # https://www.w3reference.com/blog/relative-file-paths-in-python-packages/
+    with resources.as_file(
+        resources.files("wasth.data").joinpath(yamale_schema)
+    ) as schema_file:
+        schema = schema_file.read_text(encoding="utf-8")
     schema = yamale.make_schema(content=schema, parser='ruamel')
-    data = yamale.make_data(content=f, parser='ruamel')
+    with f.open('r') as file:
+        document = file.read()
+        metadata = frontmatter.loads(document)
+    data = yamale.make_data(content=metadata, parser='ruamel')
     try:
         yamale.validate(schema, data)
-        print(":white_check_mark: Estrutura de metadados é válida.")
+        rprint(":white_check_mark: Estrutura de metadados é válida.")
         sys.exit(0)
     except yamale.YamaleError as e:
-        print(":x: Erro de validação da estrutura de dados:")
+        rprint(":x: Erro de validação da estrutura de dados:")
         for result in e.results:
             for error in result.errors:
-                print(f"\t{error}")
+                rprint(f"\t{error}")
     except ValueError as e:
-        print(f""":x: {e}""")
+        rprint(f""":x: {e}""")
     sys.exit(1)
 
 def f_valida(files: list[str]) -> int:
@@ -91,7 +105,7 @@ def f_valida(files: list[str]) -> int:
         try:
             work = Work.from_file(file)
             title = work['title']
-            print(f"""
+            rprint(f"""
 -------------------------------------------------------------------------------
 {title.upper():^79s}
 
@@ -99,20 +113,20 @@ def f_valida(files: list[str]) -> int:
 """)
             lint_result = f_lint(file)
             if not lint_result:
-                print(":white_check_mark: Sem inconsistências de formatação.")
+                rprint(":white_check_mark: Sem inconsistências de formatação.")
             else:
-                print("Relatório de inconsistências de formatação:\n")
+                rprint("Relatório de inconsistências de formatação:\n")
                 for p in lint_result:
-                    print(p)
+                    rprint(p)
             metadata = f_read(file)['metadata']
             f_schema(metadata)
         except Exception as e:
             had_error = True
-            print(f"""
+            rprint(f"""
 -------------------------------------------------------------------------------
 
 :prohibited: Não foi possível ler {file}:""")
-            print('  ' + str(e))
+            rprint('  ' + str(e))
     return 1 if had_error else 0
 
 def main(

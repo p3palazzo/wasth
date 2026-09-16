@@ -1,18 +1,22 @@
 """Acesso ao CLI do Typer (assistente de preenchimento das fichas)
 """
 
-from typing import Annotated, Optional
+from pathlib import Path
+from typing import Annotated
 
 import typer
 from pyorcid_checksum import ORCID_Checksum
 from rich import print as rprint
 
+from wasth.core import models, valida_yaml
+
 app = typer.Typer()
 
-def user_orcid(orcid: str) -> str:
+@app.command()
+def orcid(orcid: str) -> str:
     """Recebe, valida e normaliza um ORCiD inserido pelo usuário
 
-    Aceita o número do ORCiD ou o URI completo.
+    :param orcid: o número do ORCiD ou o URI completo.
     """
     orcid = orcid.strip()
     checker = ORCID_Checksum()
@@ -25,35 +29,55 @@ def user_orcid(orcid: str) -> str:
     return checker.parse_orcid(orcid)
 
 @app.command()
-def main(
-    orcid: Annotated[
-        str,
-        typer.Argument(
-            envvar="ORCID",
-            metavar="ORCiD",
-            prompt="Para começar, digite o seu ORCiD. Também pode cadastrá-lo na variável de ambiente 'ORCID'",
-            callback=user_orcid,
-            help="Seu número ou URI do ORCiD. Se não possuir um, cadastre-se em https://orcid.org",
-        ),
-    ]
+def valida(
+    object_class: Annotated[
+        str, typer.Argument(
+            help="Classe de objeto a ser validado: Work (edificação), \
+            Place (lugar) ou Concept (vocabulário)."
+        )
+    ] = "Work",
+    user_path: Annotated[
+        str, typer.Argument(
+            help="Um caminho, absoluto ou relativo ao diretório atual, \
+            para um arquivo/ficheiro ou uma pasta contendo documentos \
+            a serem processados. Por padrão é o diretório atual."
+        )
+    ] = "."
 ) -> None:
+    """Valida as fichas no arquivo/ficheiro ou pasta indicado pelo usuário
+
+    :param user_path: Um caminho de arquivo/ficheiro ou pasta.
     """
-    Esta é a tela de acesso à interfaz de preenchimento das fichas dos
+    io_paths = models.paths(
+        args = [user_path, user_path],
+        overwrite=True
+    )
+    rprint(io_paths)
+    for i in io_paths.get('filelist'):
+        valida_yaml.f_schema(i, object_class)
+
+@app.command()
+def main() -> None:
+    """
+    Esta é a tela de acesso à interfaz de processamento das fichas dos
     Documentários de arquitetura tradicional.
     """
-    typer.echo(f":white_check_mark: ORCiD {orcid} válido.")
     rprint("""
 -------------------------------------------------------
  Interfaz de linha de comando da aplicação
  [bold]WASTH[/bold] : Web App para Sítios Tradicionais e Históricos
 -------------------------------------------------------
 
+Esta aplicação foi concebida para processar as fichas
+dos Documentários da Arquitetura Tradicional.
+O site do projeto se encontra em
+<https://tradicional.arq.br>.
+
 Para instruções, digitar o comando:
-uv run typer src/wasth/app.py run --help
+uv run typer src/wasth/cli.py run --help
+
+A qualquer momento, envie CTRL-C para sair sem gravar.
         """)
-    rprint("""
-Por ora, não temos funcionalidade nenhuma nesta app.
-    """)
 
 if __name__ == "__main__":
     app()

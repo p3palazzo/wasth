@@ -11,7 +11,7 @@ import frontmatter
 import geojson
 import yamale
 from openlocationcode import openlocationcode
-from rich import print
+from rich import print as rprint
 from ruamel.yaml import YAML
 from unidecode import unidecode
 
@@ -20,7 +20,7 @@ yaml = YAML(typ='safe')
 class Thing(frontmatter.Post):
     """Esta classe define o arcabouço de dados e os métodos comuns a todas as
     classes de objetos do projeto WASTH: Work (obras de arquitetura), Place
-    (lugares), e Term (termos de vocabulário).
+    (lugares), e Concept (itens de vocabulário).
     Ela é baseada na classe Post do pacote frontmatter, um objeto que contém um
     bloco de metadados Post['metadata'], cujos elementos são também acessíveis
     diretamente por suas palavras-chave, e um bloco de conteúdo Post['content'].
@@ -31,15 +31,22 @@ class Thing(frontmatter.Post):
         super().__init__(content=content, handler=handler, **metadata)
 
     @classmethod
-    def from_file(cls, f: str) -> "Thing":
+    def from_file(cls, f: Path | str) -> "Thing":
         """Gera o objeto a partir de um arquivo/ficheiro.
 
-        :param f: Caminho para um arquivo/ficheiro no sistema local, em formato Markdown com um bloco (frontmatter) em formato YAML.
-        :type f: str
-        :returns: Um objeto em forma de dicionário que pode ser convertido, no todo ou em parte, para vários outros tipos de objetos ou reexportado para Markdown.
+        :param f: Caminho para um arquivo/ficheiro no sistema local, \
+        em formato Markdown com um bloco (frontmatter) em formato YAML.
+        :type f: str | Path
+        :returns: Um objeto em forma de dicionário que pode ser convertido, \
+        no todo ou em parte, para vários outros tipos de objetos \
+        ou reexportado para Markdown.
         :rtype: Thing
         """
-        post = frontmatter.load(f)
+        if isinstance(f, Path):
+            file = str(f)
+        elif isinstance(f, str):
+            file = f
+        post = frontmatter.load(file)
         return cls(content=post.content, handler=post.handler, **post.metadata)
 
     @classmethod
@@ -53,65 +60,64 @@ class Thing(frontmatter.Post):
         """
         return cls(content=post.content, handler=post.handler, **post.metadata)
 
+    def location(self) -> geojson.Point | None:
+        """Cria um objeto ponto geográfico a partir de `spatial.site.location`.
+
+        :returns: Um único ponto com a localização atual do objeto.
+        :rtype: geoJSON.Point
+        """
+        spatial = self.get('spatial')
+        if not isinstance(spatial, dict):
+            return None
+        site = spatial.get('site')
+        if not isinstance(site, dict):
+            return None
+        location = site.get('location')
+        if not isinstance(location, dict):
+            return None
+        lat = location.get('lat')
+        lon = location.get('lon')
+        alt = location.get('alt')
+        if not isinstance(lat, (float, int)) or not isinstance(lon, (float, int)):
+            return None
+        if not isinstance(alt, (float, int)):
+            p = geojson.Point((lon, lat))
+        else:
+            p = geojson.Point((lon, lat, alt))
+        if p.is_valid:
+            return p
+        else:
+            return None
+
+    def extent(self) -> geojson.Polygon | geojson.MultiPolygon | None:
+        spatial = self.get('spatial')
+        if not isinstance(spatial, dict):
+            return None
+        site = spatial.get('site')
+        if not isinstance(site, dict):
+            return None
+        extent = site.get('location')
+        if not isinstance(extent, dict):
+            return None
+        geometry_type = extent.get('type')
+        coords = extent.get('coordinates')
+        if not isinstance(geometry_type, str) or \
+            not isinstance(coords, str):
+            return None
+        if geometry_type == "Polygon":
+            p = geojson.Polygon(coords)
+        elif geometry_type == "MultiPolygon":
+            p = geojson.MultiPolygon(coords)
+        else:
+            return None
+        if p.is_valid:
+            return p
+        else:
+            return None
 
 class Work(Thing):
     """Arcabouço dos dados e métodos das fichas de obras.
     """
-    def places(self) -> geojson.FeatureCollection | None:
-        """Cria geoJSON a partir de 'spatial'"""
-        spatial = self.get('spatial')
-        if not spatial:
-            raise ValueError(
-                ":globe_with_meridians::w:  A obra não está georreferenciada."
-            )
-        places = []
-        for place in spatial:
-            props = {
-                'type': place.get('type') or 'site',
-            }
-            if place.get('display'):
-                props['display'] = place['display']
-            if place.get('zoom'):
-                props['zoom'] = place['zoom']
-            if place.get('location'):
-                location = place.get('location')
-                lat = location.get('lat')
-                lon = location.get('lon')
-                alt = location.get('alt')
-                if lat is None or lon is None:
-                    raise ValueError(
-                ":globe_with_meridians::x:  Latitude e/ou longitude ausentes."
-                    )
-                if alt is not None:
-                    geom = geojson.Point((lon, lat, alt))
-                else:
-                    geom = geojson.Point((lon, lat))
-            elif place.get('extent'):
-                extent = place['extent']
-                coords = extent.get('coordinates')
-                geom_type = extent.get('type') or 'Polygon'
-                if geom_type == 'Polygon':
-                    geom = geojson.Polygon(coords)
-                elif geom_type == 'MultiPolygon':
-                    geom = geojson.MultiPolygon(coords)
-                else:
-                    raise ValueError(
-f":globe_with_meridians::x:  {geom_type} não é um tipo de geometria válido."
-                                     )
-            else:
-                raise ValueError(
-":globe_with_meridians::x:  Dados de georreferenciamento inexistentes."
-                                 )
-            feature = geojson.Feature(geometry=geom, properties=props)
-            if feature.is_valid:
-                places.append(feature)
-            else:
-                raise ValueError(f"""
-:globe_with_meridians::x:  Dados de georreferenciamento inválidos:
-{feature.errors()}
-                    """)
-        return geojson.FeatureCollection(places)
-
     def olc_id(self) -> str | None:
         """
         Processa entradas de georreferenciamento
@@ -340,10 +346,11 @@ A função realiza as seguintes operações:
     def slug(self) -> str | None:
         """Gera o nome do arquivo a ser gravado.
 
-Unidade da Federação ou distrito usando o padrão ISO 3166:2 seguido de
-nome do município ou concelho e nome da localidade.
-Os acentos gráficos em oxítonas são convertidos segundo a convenção telegráfica
-para evitar ambiguidades em nomes de lugares (por exemplo, Paraná vs Paranã).
+        Unidade da Federação ou distrito usando o padrão ISO 3166:2 seguido de
+        nome do município ou concelho e nome da localidade.
+        Os acentos gráficos em oxítonas são convertidos segundo a convenção
+        telegráfica para evitar ambiguidades em nomes de lugares
+        (por exemplo, Paraná vs Paranã).
         """
         repos = self.get('repository', [])
         if not repos:
@@ -440,59 +447,65 @@ def pt_ascii(text: str) -> str:
 
 def paths(
     args: list[str] | None = None,
+    prompt: bool = False,
     overwrite: bool | None = None,
     filetype: str = '.md'
 ) -> InOutPaths | None:
     """Gera os nomes de arquivos de entrada e a pasta de saída a partir da
     entrada do usuário.
 
-    Primeiro argumento: caminho de entrada (arquivo/ficheiro ou pasta)
-    Segundo argumento: caminho de saída (pasta), opcional;
-    se for deixado em branco sobrescreve o existente.
+    :param args: Primeiro argumento: caminho de entrada (arquivo/ficheiro ou pasta)
+    Segundo argumento: caminho de saída (pasta).
+    :returns: Um dicionário (TypedDict) cujo primeiro elemento é o caminho de
+    entrada e o segundo é a pasta de saída.
+    :rtype: InOutPaths
     """
     if not args:
-        if 2 <= len(sys.argv) <= 3:
+        if 2 <= len(sys.argv) <= 3 and not prompt:
             args = sys.argv[1:]
+        elif len(args) > 2:
+            raise OSError("Número excessivo de argumentos.")
         else:
-            args = input("""
-Informar um caminho de arquivo/ficheiro ou pasta de leitura
-e opcionalmente uma pasta de gravação.
-Omitir a pasta de gravação sobrescreve os arquivos/ficheiros existentes.
-                """).strip().split()
-    if not args:
-        print("Operação cancelada.")
-        return None
-    source = Path(args[0])
-    if len(args) == 1:
-        if overwrite is None:
-            prompt = input(
-                ":warning:  Sobrescrever arquivos/ficheiros existentes? s/n"
-            ).strip().casefold()
-            overwrite = prompt in { "s", "sim", "y", "yes", "sobrescrever" }
-        if overwrite is False:
-            print("Operação cancelada.")
-            return None
-    if len(args) > 2:
-        raise OSError("Número excessivo de argumentos.")
-    if len(args) == 2 and Path(args[1]).is_file():
-        raise OSError("O segundo argumento deve ser uma pasta ou ser omitido.")
+            args = input(f"""
+Informar um caminho de arquivo/ficheiro ou pasta de leitura.
+Por padrão será a pasta atual:
+
+$:{Path.cwd()}/""").strip().split()
+    if args[0]:
+        source = Path(args[0])
+    else:
+        source = Path.cwd()
     if source.is_dir():
         filelist = [
-            source.joinpath(f)
-            for f in source.iterdir()
-            if source.joinpath(f).is_file()
-            and source.joinpath(f).suffix == filetype
+            p for p in source.iterdir() if p.is_file()
+            and p.suffix.casefold() == filetype.casefold()
+            and p.stem != "README"
         ]
-        if len(filelist) == 0:
-            print(f"""
-:x:  Nenhum arquivo/ficheiro no formato {filetype} encontrado.
-            """)
-            return None
-        output_dir = Path(args[1]) if len(args) == 2 else source
-        return { 'filelist': filelist, 'output_dir': output_dir }
-    output_dir = Path(args[1]) if len(args) == 2\
-        else source.resolve().parent
-    return { 'filelist': [source], 'output_dir': output_dir}
+        rprint(f"""
+{len(filelist)} documentos no formato '{filetype}' encontrado(s) em {source.resolve()}.
+        """)
+    elif source.is_file() and source.suffix.casefold() == filetype.casefold():
+        filelist = [source]
+    if len(args) == 2 and Path(args[1]).is_file():
+        raise OSError("O segundo argumento deve ser uma pasta ou ser omitido.")
+    if len(args) == 2 and Path(args[1]).is_dir():
+        output_dir = Path(args[1])
+    if len(args) == 1:
+        if overwrite is None:
+            ask_overwrite = input(
+                "⚠️  Sobrescrever arquivos/ficheiros existentes? s/n\n"
+            ).strip().casefold()
+            overwrite = ask_overwrite in { "s", "sim", "y", "yes", "sobrescrever" }
+        if overwrite is True:
+            output_dir = source.resolve().parent
+        else:
+            output_dir = Path(input(f"""
+Informar um caminho de pasta de gravação.
+$:{Path.cwd()}"""))
+    if not output_dir or not filelist:
+        rprint("Operação cancelada.")
+        return None
+    return { 'filelist': filelist, 'output_dir': output_dir}
 
 def make_output_dir(output_dir: Path) -> Path:
     """Cria pasta de saída ou retorna erro."""
@@ -507,7 +520,7 @@ def make_output_dir(output_dir: Path) -> Path:
     return output_dir
 
 def write_file(
-        post: frontmatter.Post | Work | Place | Concept,
+        post: frontmatter.Post,
         output_dir: Path,
         filename: Path
 ) -> Path | None:
@@ -519,7 +532,7 @@ def write_file(
     try:
         dest = Path(output_dir) / Path(filename)
         frontmatter.dump(post, dest, sort_keys=False)
-        print(f"""
+        rprint(f"""
 :card_index:  {post.get('id')} --- [bold]{post.get('title')}[/bold]
    gravado em '{str(dest)}'
         """)
