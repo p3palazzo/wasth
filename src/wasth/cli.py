@@ -82,8 +82,13 @@ def geojson(
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context) -> None:
     """
-    Esta é a tela de acesso à interfaz de processamento das fichas dos
-    Documentários de arquitetura tradicional.
+ Interfaz de linha de comando da aplicação
+ [bold]WASTH[/bold] : Web App para Sítios Tradicionais e Históricos
+
+Esta aplicação foi concebida para processar as fichas
+dos Documentários da Arquitetura Tradicional.
+
+Digite os comandos e as opções abaixo para usar as funcionalidades do WASTH.
     """
     rprint("""
 -------------------------------------------------------
