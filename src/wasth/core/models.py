@@ -12,6 +12,7 @@ import geojson
 import yamale
 from geojson import utils as geojson_utils
 from openlocationcode import openlocationcode
+from pydantic import BaseModel
 from rdflib import BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import DCTERMS, RDF, RDFS, SKOS
 from rich import print as rprint
@@ -22,18 +23,31 @@ from wasth.core import normalize
 
 yaml = YAML(typ='safe')
 
-class Thing(frontmatter.Post):
+class Thing(BaseModel):
     """Esta classe define o arcabouço de dados e os métodos comuns a todas as
     classes de objetos do projeto WASTH: Work (obras de arquitetura), Place
     (lugares), e Concept (itens de vocabulário).
-    Ela é baseada na classe Post do pacote frontmatter, um objeto que contém um
-    bloco de metadados Post['metadata'], cujos elementos são também acessíveis
-    diretamente por suas palavras-chave, e um bloco de conteúdo Post['content'].
 
     Esta classe apresenta dois métodos para criar um objeto:
+
+    1. De um arquivo Markdown, passando por um objeto frontmatter.Post;
+    2. De dados já estruturados pelo frontmatter.Post.
+
+    A inicialização do objeto valida os dados inseridos.
     """
-    def __init__(self, content: str = '', handler=None, **metadata) -> None:
-        super().__init__(content=content, handler=handler, **metadata)
+    id: str | None = None
+    author: str
+    date: date = date.today()
+    category: Concept
+    title: str
+    title_type: Concept
+    titles: list[Concept] | None = None
+    excerpt: str | None = None
+    description: str | None = None
+    collection: list[dict] | None = None
+    relation: list[Thing] | None = None
+    repository: list[dict] | None = None
+    record_rights: list[dict]
 
     @classmethod
     def from_file(cls, f: Path | str) -> "Thing":
