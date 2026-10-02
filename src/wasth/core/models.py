@@ -41,7 +41,6 @@ class Thing(BaseModel):
     title: str
     title_type: Concept
     titles: list[Concept] | None = None
-    excerpt: str | None = None
     description: str | None = None
     collection: list[dict] | None = None
     relation: list[Thing] | None = None
