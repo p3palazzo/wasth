@@ -77,7 +77,8 @@ class Thing(BaseModel):
         :return: Um objeto em forma de dicionário que pode ser convertido, no todo ou em parte, para vários outros tipos de objetos ou reexportado para Markdown.
         :rtype: Thing
         """
-        return cls(content=post.content, handler=post.handler, **post.metadata)
+        post.metadata['content'] = post.content
+        return cls(**post.metadata)
 
     def validation_errors(self) -> dict | None:
         """Verifica se a ficha tem título, autor, data e id
