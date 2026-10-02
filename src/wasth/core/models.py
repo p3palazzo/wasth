@@ -3,7 +3,7 @@
 import os
 import re
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Required, TypedDict
 
@@ -24,11 +24,10 @@ from wasth.core import normalize
 yaml = YAML(typ='safe')
 
 class Thing(BaseModel):
-    """Esta classe define o arcabouço de dados e os métodos comuns a todas as
-    classes de objetos do projeto WASTH: Work (obras de arquitetura), Place
-    (lugares), e Concept (itens de vocabulário).
+    """Dados e métodos comuns a todas as classes de objetos do projeto WASTH:
+    Work (obras de arquitetura), Place (lugares), e Concept (itens de vocabulário).
 
-    Esta classe apresenta dois métodos para criar um objeto:
+    Apresenta dois métodos para criar um objeto:
 
     1. De um arquivo Markdown, passando por um objeto frontmatter.Post;
     2. De dados já estruturados pelo frontmatter.Post.
@@ -37,7 +36,7 @@ class Thing(BaseModel):
     """
     id: str | None = None
     author: str
-    date: date = date.today()
+    date: datetime | date = date.today()
     category: Concept
     title: str
     title_type: Concept
@@ -47,7 +46,8 @@ class Thing(BaseModel):
     collection: list[dict] | None = None
     relation: list[Thing] | None = None
     repository: list[dict] | None = None
-    record_rights: list[dict]
+    record_rights: list[dict] # = RightsArqTrad
+    content: str | None = None
 
     @classmethod
     def from_file(cls, f: Path | str) -> "Thing":
@@ -66,7 +66,8 @@ class Thing(BaseModel):
         elif isinstance(f, str):
             file = f
         post = frontmatter.load(file)
-        return cls(content=post.content, handler=post.handler, **post.metadata)
+        post.metadata['content'] = post.content
+        return cls(**post.metadata)
 
     @classmethod
     def from_post(cls, post: frontmatter.Post) -> "Thing":
