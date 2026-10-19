@@ -21,3 +21,10 @@ ACTOR_TYPE = Literal[
 	'other'
 ]
 
+REPO_TYPE = Literal[
+    'corporate',
+    'geographic',
+    'personal',
+    'other'
+]
+

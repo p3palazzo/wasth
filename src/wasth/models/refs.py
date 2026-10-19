@@ -11,7 +11,7 @@ from .thing import Thing
 
 class LIDORepository(BaseModel):
     """Definição de um repositório (continente jurídico) nas fichas de obra"""
-    type: str = 'corporate'
+    type: Literal[dcmi_namespace.REPO_TYPE] = 'corporate'
     name: Thing
     part_of: LIDORepository | None = None
 
