@@ -1,5 +1,5 @@
 id: str(matches=regex(r'^([2-9CFGHJMPQRVWX]{8})\+([2-9CFGHJMPQRVWX]{3})$', name='OLC Plus Code 11')) # LIDO:recordID
-excerpt: str()
+description: str()
 date: day(min='2022-01-01') # LIDO:recordMetadataDate
 author: include('orcid')
 title: str(min=3, max=75)

@@ -5,10 +5,11 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from pyorcid_checksum import ORCID_Checksum
 from rich import print as rprint
 
 from wasth.core import geoprocessa, models, valida_yaml
+
+from .models import Thing
 
 app = typer.Typer()
 
@@ -66,7 +67,7 @@ def geojson(
     if not filelist:
         raise OSError("Nenhum conteúdo para ingerir.")
     for i in io_paths.get('filelist'):
-        thing = models.Thing.from_file(i)
+        thing = Thing.from_file(i)
         location = thing.location()
         if location:
             things.append(thing)
