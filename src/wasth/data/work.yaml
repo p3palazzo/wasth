@@ -71,8 +71,6 @@ place:
   name: include('typed_refs', required=False) # arqtrad/lugar, antigo `place`
   location: include('gml_point')
   extent: include('gml_poly', required=False)
-  srs_name: include('typed_refs', required=False) # antigo: srsName
-  source: any(include('legal_body'), include('citation'))
   zoom: int(min=0, max=18, required=False) # 13
 
 repository:
@@ -90,10 +88,14 @@ gml_point:
   lat: num(min=-90, max=90)
   lon: num(min=-180, max=180)
   alt: num(min=0, max=10000, required=False)
+  srs_name: include('typed_refs', required=False) # antigo: srsName
+  source: any(include('legal_body'), include('citation'))
 
 gml_poly:
   type: enum("Polygon", "MultiPolygon", "LineString")
   coordinates: include('coordinates')
+  srs_name: include('typed_refs', required=False) # antigo: srsName
+  source: any(include('legal_body'), include('citation'))
 
 alternate_title:
   type: enum("brandName", "cited", "creator", "descriptive", "former", "inscribed", "owner", "popular", "repository", "translated", "other")
@@ -103,12 +105,8 @@ alternate_title:
 
 inscription:
   type: enum('signature', 'mark', 'caption', 'date', 'text', 'translation', 'other')
-  transcription: list(include('transcription'), required=False)
+  transcription: str()
   description: list(include('note'), required=False)
-
-transcription:
-  lang: regex('^[a-zA-Z- ]+$', min=2)
-  text: str()
 
 format_map:
   extent: include('extent_map', required=False)
