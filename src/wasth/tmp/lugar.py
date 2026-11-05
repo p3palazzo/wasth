@@ -3,26 +3,24 @@ Funções para obter informações geográficas das edificações.
 """
 import argparse
 import csv
-import geojson
-from geojson import utils as geojson_utils
 import sys
 from collections.abc import Mapping
 from pathlib import Path
-from rich import print as rprint
 
 import frontmatter
+import geojson
 import geopandas as gpd
 from frontmatter.default_handlers import YAMLHandler
+from geojson import utils as geojson_utils
+from rich import print as rprint
 from ruamel.yaml import YAML
+
+from wasth.models import Place, Work
 
 yaml = YAML(typ='rt')
 
-def work_location(path: Path) -> gpd.GeoDataFrame | None:
-    post = frontmatter.load(
-        str(path),
-        encoding="utf-8",
-    )
-    spatial = post.get('spatial')
+def work_location(work: Work) -> gpd.GeoDataFrame | None:
+    spatial = work.spatial
     if not isinstance(spatial, dict):
         return None
     site = spatial.get('site')
@@ -43,7 +41,10 @@ def work_location(path: Path) -> gpd.GeoDataFrame | None:
     return gdf
 
 def point_in_poly(point: gpd.GeoDataFrame, poly: gpd.GeoDataFrame) -> str | None:
+    pass
 
+
+# Revisar função principal:
 
 def main():
     parser = argparse.ArgumentParser(
