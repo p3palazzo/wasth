@@ -1,4 +1,5 @@
 import datetime
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -9,14 +10,22 @@ from arqtrad_schema.datamodel.arqtrad_schema_pydantic import (GeographicExtent,
                                                               Site)
 from arqtrad_schema.datamodel.arqtrad_schema_pydantic import Thing as _Thing
 from arqtrad_schema.datamodel.arqtrad_schema_pydantic import Work as _Work
-from geojson import utils as geojson_utils
 from openlocationcode import openlocationcode
 from pydantic import field_validator, model_validator
 from pyorcid_checksum import ORCID_Checksum
 from rdflib import URIRef
 from ruamel.yaml import YAML
 
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    from typing_extensions import Self
+
 yaml = YAML(typ='rt')
+
+ORCID_CHECKER = ORCID_Checksum()
+ORCID_PREFIXES = ("orcid:", "https://orcid.org/", "http://orcid.org/")
+SITE_FIELDS = ("site", "former_site", "intended_site", "other_site")
 
 def _parse_orcid(orcid: str | URIRef) -> str:
     """Retorna o número do ORCiD para conferência na API
@@ -27,23 +36,19 @@ def _parse_orcid(orcid: str | URIRef) -> str:
     verificar a sua existência na API.
     :rtype: str
     """
-    ORCID_CHECKER = ORCID_Checksum()
-    ORCID_PREFIXES = ("orcid:", "https://orcid.org/", "http://orcid.org/")
 
-    text = str(orcid).strip()
-    if not text:
+    orcid_number = str(orcid).strip()
+    if not orcid_number:
         raise ValueError("ORCiD inexistente.")
     for prefix in ORCID_PREFIXES:
-        if text.lower().startswith(prefix):
-            orcid_number = text[len(prefix):]
-        else:
-            orcid_number = text
+        if orcid_number.lower().startswith(prefix):
+            orcid_number = orcid_number[len(prefix):]
+            break
+    orcid_number = orcid_number.strip("/ ").upper()
 
-    if ORCID_CHECKER.check_orcid_checksum(orcid_number) is False:
+    if not ORCID_CHECKER.check_orcid_checksum(orcid_number):
         raise ValueError(f"ORCID iD inválido: {orcid_number!r}")
     return ORCID_CHECKER.parse_orcid(orcid_number)
-
-_SITE_FIELDS = ("site", "former_site", "intended_site", "other_site")
 
 def site_location(location: GeographicPoint | None) -> geojson.Point | None:
     """Ponto GeoJSON (lon, lat[, alt]) a partir das coordenadas."""
@@ -61,7 +66,6 @@ def site_extent(
     """Polígono(s) de implantação a partir das coordenadas."""
     if extent is None:
         return None
-    coords = extent.coordinates
     coords = extent.coordinates
     match extent.geometry_type:
         case "Polygon":
@@ -86,7 +90,7 @@ class Thing(_Thing):
     """
 
     @classmethod
-    def from_file(cls, f: Path) -> "Thing":
+    def from_file(cls, f: Path) -> Self:
         """Gera o objeto a partir de um arquivo/ficheiro.
 
         :param f: Caminho para um arquivo/ficheiro no sistema local, \
@@ -100,7 +104,7 @@ class Thing(_Thing):
         return cls.from_post(frontmatter.load(f))
 
     @classmethod
-    def from_post(cls, post: frontmatter.Post) -> "Thing":
+    def from_post(cls, post: frontmatter.Post) -> Self:
         """Gera o objeto a partir de um objeto frontmatter.Post
 
         :param post: Um objeto já processado a partir de um documento Markdown com frontmatter YAML.
@@ -116,24 +120,26 @@ class Thing(_Thing):
     @classmethod
     def validate_orcid(
             cls,
-            value: list[str | URIRef] | str | URIRef
-    ) -> str | list[str]:
+            value: list[str | URIRef] | str | URIRef | None
+    ) -> str | list[str] | None:
         """Return a bare, validated ORCID iD using PyORCID-checker."""
         if value is None:
             return value
-        if isinstance(value, (list)):
+        if isinstance(value, (list, tuple)):
             return [ _parse_orcid(v) for v in value ]
-        else:
-            return _parse_orcid(value)
+        return _parse_orcid(value)
 
-    @field_validator("record_date", mode="before")
-    def validate_record_date(cls, value: datetime.date | None) -> datetime.date | None:
+    @field_validator("record_date", mode="after")
+    def validate_record_date(
+            cls,
+            value: datetime.date | None
+    ) -> datetime.date | None:
+        today = datetime.date.today()
         if value is None:
-            return datetime.date.today()
-        if value <= datetime.date.today():
-            return value
-        if value > datetime.date.today():
+            return today
+        if value > today:
             raise ValueError(f"A data da ficha {value} não pode ser uma data futura.")
+        return value
 
     @model_validator(mode="after")
     def exactly_one_author_field(self):
@@ -149,7 +155,7 @@ class Work(Thing, _Work):
 
     def _iter_sites(self) -> Iterator[tuple[str, int, Site]]:
         """Percorre todos os sítios, seja campo único ou lista."""
-        for name in _SITE_FIELDS:
+        for name in SITE_FIELDS:
             value = getattr(self, name, None)
             if value is None:
                 continue
@@ -157,12 +163,48 @@ class Work(Thing, _Work):
             for i, site in enumerate(sites):
                 yield name, i, site
 
+    def olc_id(self) -> str | None:
+        """
+        Processa entradas de georreferenciamento
+
+        :params: Aceita a propriedade site_location do objeto Work
+        :returns: Gera ID no formato Open Location Code a partir da latitude e
+        longitude inseridas na ficha ou na interface.
+        :rtype: str
+        """
+        loc = self.site_location
+        if not loc:
+            return None
+        if loc.lat is None or loc.lon is None:
+            return None
+        return openlocationcode.encode(loc.lat, loc.lon, 11)
+
     @model_validator(mode="after")
-    def _validate_site_points(self):
-        """Valida coordenadas da locação."""
+    def _validate_site_geometry(self):
+        """Valida coordenadas da locação e da implantação."""
         for name, i, site in self._iter_sites():
             if site.location is not None and site_location(site.location) is None:
                 raise ValueError(f"Coordenadas inválidas em {name}[{i}].location")
+            if site.extent is not None and site_extent(site.extent) is None:
+                raise ValueError(f"Geometria inválida em {name}[{i}].extent")
+        return self
+
+    @model_validator(mode="after")
+    def _validate_id(self):
+        """Gera o `id` a partir do OLC ou confere o `id` informado."""
+        expected = self.olc_id()
+        if expected is None:
+            raise ValueError(
+                "Não é possível gerar ou conferir o `id`: "
+                "a obra não tem `site.location` válido."
+            )
+        if not self.id:
+            self.id = expected
+        elif str(self.id).strip().upper() != expected:
+            raise ValueError(f"""
+                `id` {self.id!r} não corresponde ao OLC {expected!r} 
+                calculado a partir das coordenadas do sítio.
+            """)
         return self
 
     @property
@@ -172,18 +214,3 @@ class Work(Thing, _Work):
     @property
     def site_extent(self) -> geojson.Polygon | geojson.MultiPolygon | None:
         return site_extent(self.site.extent) if self.site.extent else None
-
-    def olc_id(self) -> str | None:
-        """
-        Processa entradas de georreferenciamento
-
-        Gera ID no formato Open Location Code a partir da latitude e longitude
-        inseridas na ficha ou na interface.
-        """
-        location = self.location()
-        if not isinstance(location, geojson.Point):
-            return None
-        (lon, lat) = geojson_utils.coords(location)
-        if lat is None or lon is None:
-            return None
-        return openlocationcode.encode(lat, lon, 11)
