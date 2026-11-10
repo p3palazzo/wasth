@@ -48,9 +48,9 @@ class Thing(_Thing):
     1. De um arquivo Markdown, passando por um objeto frontmatter.Post;
     2. De dados já estruturados pelo frontmatter.Post.
 
-    A inicialização do objeto valida os dados inseridos.
+    A inicialização do objeto valida os dados inseridos, especialmente o ORCiD
+    do(s) autor(es).
     """
-    record_date: datetime.date = Field(default_factory=datetime.date.today, le=datetime.date.today(), frozen=True)
 
     @classmethod
     def from_file(cls, f: Path) -> "Thing":
@@ -92,6 +92,15 @@ class Thing(_Thing):
             return [ _parse_orcid(v) for v in value ]
         else:
             return _parse_orcid(value)
+
+    @field_validator("record_date", mode="before")
+    def validate_record_date(cls, value: datetime.date | None) -> datetime.date | None:
+        if value is None:
+            return datetime.date.today()
+        if value <= datetime.date.today():
+            return value
+        if value > datetime.date.today():
+            raise ValueError(f"A data da ficha {value} não pode ser uma data futura.")
 
     @model_validator(mode="after")
     def exactly_one_author_field(self):
