@@ -1,4 +1,5 @@
 import geojson
+from arqtrad_schema.datamodel.arqtrad_schema_pydantic import Work as _Work
 from geojson import utils as geojson_utils
 from openlocationcode import openlocationcode
 
@@ -6,7 +7,7 @@ from .refs import *
 from .thing import Thing
 
 
-class Work(Thing):
+class Work(Thing, _Work):
     """Arcabouço dos dados e métodos das fichas de obras.
     """
     format: None

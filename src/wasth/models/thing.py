@@ -3,7 +3,8 @@ from pathlib import Path
 from typing import Annotated
 
 import frontmatter
-from pydantic import BaseModel, Field, PastDate, field_validator
+from arqtrad_schema.datamodel.arqtrad_schema_pydantic import Thing as _Thing
+from pydantic import Field, PastDate, field_validator
 from pyorcid_checksum import ORCID_Checksum
 from rdflib import URIRef
 from ruamel.yaml import YAML
@@ -11,11 +12,11 @@ from ruamel.yaml import YAML
 from . import dcmi_namespace
 from .refs import *
 
-yaml = YAML(typ='safe')
+yaml = YAML(typ='rt')
 
 ORCID_CHECKER = ORCID_Checksum()
 
-class Thing(BaseModel):
+class Thing(_Thing):
     """Dados e métodos comuns a todas as classes de objetos do projeto WASTH:
     Work (obras de arquitetura), Place (lugares), e Concept (itens de vocabulário).
 
@@ -26,22 +27,7 @@ class Thing(BaseModel):
 
     A inicialização do objeto valida os dados inseridos.
     """
-    id: Annotated[str, Field(frozen=True)]
-    author: Annotated[str, Field(frozen=True)]
-    date: PastDate = Field(default_factory=datetime.date.today, frozen=True)
-    # category: Concept
-    title: str
-    title_type: dcmi_namespace.TITLE_TYPE
-    title_source: list[BibliographicCitation] | None = None
-    titles: list[LIDOAppellationTitle] | None = None
-    description: str
-    bibliographic_citation: list[BibliographicCitation] | None = None
-    identifiers: list[XRef] | None = None # LIDOPublishedID
-    temporal: list[LIDOEvent] | None = None
-    collection: list[dict] | None = None
-    repository: list[LIDORepository] | None = None
-    record_rights: list[LIDORights] | None = None
-    content: str | None = None
+    record_date: datetime.date = Field(default_factory=datetime.date.today, le=datetime.date.today(), frozen=True)
 
     @classmethod
     def from_file(cls, f: Path) -> "Thing":
@@ -69,6 +55,18 @@ class Thing(BaseModel):
         data = post.metadata.copy()
         data["content"] = post.content
         return cls.model_validate(data)
+
+    def _parse_orcid(self, orcid: str | URIRef) -> str:
+        ORCID_PREFIXES = ("orcid:", "https://orcid.org/", "http://orcid.org/")
+        text = str(orcid).strip()
+        for prefix in ORCID_PREFIXES:
+            if text.lower().startswith(prefix):
+                orcid_number = text[len(prefix):]
+            else:
+                orcid_number = text
+        if ORCID_CHECKER.check_orcid_checksum(orcid_number) is False:
+            raise ValueError(f"ORCID iD inválido: {value!r}")
+        return ORCID_CHECKER.parse_orcid(orcid_number)
 
     @field_validator("author", mode="before")
     @classmethod
