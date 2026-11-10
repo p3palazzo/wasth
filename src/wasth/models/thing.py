@@ -1,16 +1,20 @@
 import datetime
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Annotated
 
 import frontmatter
+import geojson
+from arqtrad_schema.datamodel.arqtrad_schema_pydantic import (GeographicExtent,
+                                                              GeographicPoint,
+                                                              Site)
 from arqtrad_schema.datamodel.arqtrad_schema_pydantic import Thing as _Thing
-from pydantic import Field, PastDate, field_validator
+from arqtrad_schema.datamodel.arqtrad_schema_pydantic import Work as _Work
+from geojson import utils as geojson_utils
+from openlocationcode import openlocationcode
+from pydantic import field_validator, model_validator
 from pyorcid_checksum import ORCID_Checksum
 from rdflib import URIRef
 from ruamel.yaml import YAML
-
-from . import dcmi_namespace
-from .refs import *
 
 yaml = YAML(typ='rt')
 
@@ -38,6 +42,35 @@ def _parse_orcid(orcid: str | URIRef) -> str:
     if ORCID_CHECKER.check_orcid_checksum(orcid_number) is False:
         raise ValueError(f"ORCID iD inválido: {orcid_number!r}")
     return ORCID_CHECKER.parse_orcid(orcid_number)
+
+_SITE_FIELDS = ("site", "former_site", "intended_site", "other_site")
+
+def site_location(location: GeographicPoint | None) -> geojson.Point | None:
+    """Ponto GeoJSON (lon, lat[, alt]) a partir das coordenadas."""
+    if location is None:
+        return None
+    coords = (location.lon, location.lat)
+    if location.alt is not None:
+        coords += (location.alt,)
+    p = geojson.Point(coords)
+    return p if p.is_valid else None
+
+def site_extent(
+        extent: GeographicExtent | None
+    ) -> geojson.Polygon | geojson.MultiPolygon | None:
+    """Polígono(s) de implantação a partir das coordenadas."""
+    if extent is None:
+        return None
+    coords = extent.coordinates
+    coords = extent.coordinates
+    match extent.geometry_type:
+        case "Polygon":
+            footprint = geojson.Polygon(coords)
+        case "MultiPolygon":
+            footprint = geojson.MultiPolygon(coords)
+        case _:
+            footprint = geojson.Polygon(coords)
+    return footprint if footprint.is_valid else None
 
 class Thing(_Thing):
     """Dados e métodos comuns a todas as classes de objetos do projeto WASTH:
@@ -109,3 +142,48 @@ class Thing(_Thing):
         if has_author == has_authors:
             raise ValueError("Informe exatamente um entre `author` e `authors`")
         return self
+
+class Work(Thing, _Work):
+    """Arcabouço dos dados e métodos das fichas de obras.
+    """
+
+    def _iter_sites(self) -> Iterator[tuple[str, int, Site]]:
+        """Percorre todos os sítios, seja campo único ou lista."""
+        for name in _SITE_FIELDS:
+            value = getattr(self, name, None)
+            if value is None:
+                continue
+            sites = value if isinstance(value, list) else [value]
+            for i, site in enumerate(sites):
+                yield name, i, site
+
+    @model_validator(mode="after")
+    def _validate_site_points(self):
+        """Valida coordenadas da locação."""
+        for name, i, site in self._iter_sites():
+            if site.location is not None and site_location(site.location) is None:
+                raise ValueError(f"Coordenadas inválidas em {name}[{i}].location")
+        return self
+
+    @property
+    def site_location(self) -> geojson.Point | None:
+        return site_location(self.site.location) if self.site.location else None
+
+    @property
+    def site_extent(self) -> geojson.Polygon | geojson.MultiPolygon | None:
+        return site_extent(self.site.extent) if self.site.extent else None
+
+    def olc_id(self) -> str | None:
+        """
+        Processa entradas de georreferenciamento
+
+        Gera ID no formato Open Location Code a partir da latitude e longitude
+        inseridas na ficha ou na interface.
+        """
+        location = self.location()
+        if not isinstance(location, geojson.Point):
+            return None
+        (lon, lat) = geojson_utils.coords(location)
+        if lat is None or lon is None:
+            return None
+        return openlocationcode.encode(lat, lon, 11)
