@@ -14,7 +14,7 @@ from arqtrad_schema.datamodel.arqtrad_schema_pydantic import (
 from arqtrad_schema.datamodel.arqtrad_schema_pydantic import Thing as _Thing
 from arqtrad_schema.datamodel.arqtrad_schema_pydantic import Work as _Work
 from openlocationcode import openlocationcode
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import field_validator, model_validator
 from rdflib import URIRef
 from ruamel.yaml import YAML
 
@@ -276,77 +276,3 @@ class Concept(Thing, _Concept):
                 f"Conceitos em `broader` e `relation` ao mesmo tempo: {sorted(overlap)}"
             )
         return self
-
-
-# -----------------------------------------------------------------------------
-# ORCiD
-# -----------------------------------------------------------------------------
-class OrcidName(BaseModel):
-    """Modela o nome da pessoa com base nos dados do ORCiD."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    given_names: str | None = Field(default=None, alias="given-names")
-    family_name: str | None = Field(default=None, alias="family-name")
-    credit_name: str | None = Field(default=None, alias="credit-name")
-
-
-class OrcidBiography(BaseModel):
-    """Modela a bio da pessoa com base nos dados do ORCiD."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    content: str | None = None
-
-
-class OrcidPerson(BaseModel):
-    """Modela uma pessoa com base nos dados da consulta pública ao ORCiD."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    name: OrcidName | None = None
-    biography: OrcidBiography | None = None
-
-
-class OrcidRecord(BaseModel):
-    """Modela o registro ORCiD retornado pela consulta pública."""
-
-    model_config = ConfigDict(populate_by_name=True)
-
-    orcid: str = Field(alias="path")
-    person: OrcidPerson | None = None
-
-    @property
-    def credit_name(self) -> str | None:
-        return (
-            self.person.name.credit_name if self.person and self.person.name else None
-        )
-
-    @property
-    def given_names(self) -> str | None:
-        return (
-            self.person.name.given_names if self.person and self.person.name else None
-        )
-
-    @property
-    def family_name(self) -> str | None:
-        return (
-            self.person.name.family_name if self.person and self.person.name else None
-        )
-
-    @property
-    def biography(self) -> str | None:
-        return (
-            self.person.biography.content
-            if self.person and self.person.biography
-            else None
-        )
-
-    @property
-    def full_name(self) -> str | None:
-        parts = [part for part in (self.given_names, self.family_name) if part]
-        return " ".join(parts) or None
-
-    @property
-    def display_name(self) -> str | None:
-        return self.credit_name or self.full_name

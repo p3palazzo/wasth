@@ -10,10 +10,9 @@ pode, portanto, vir vazio (``None`` ou lista vazia).
 from __future__ import annotations
 
 import httpx
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pyorcid_checksum import ORCID_Checksum
 from rdflib import URIRef
-
-from wasth.models import OrcidRecord
 
 ORCID_BASE_URL = "https://orcid.org"
 USER_AGENT = "WASTH/0.6.0 (mailto:doc.mod@unb.br)"
@@ -79,3 +78,108 @@ def orcid_profile(
 # -----------------------------------------------------------------------------
 class OrcidError(Exception):
     """Erro genérico na consulta ao ORCID."""
+
+
+# -----------------------------------------------------------------------------
+# ORCiD models
+# -----------------------------------------------------------------------------
+class OrcidIdentifier(BaseModel):
+    """Modela o identificador ORCiD retornado pela consulta pública."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    orcid: str = Field(alias="path")
+    uri: str | None = None
+    host: str | None = None
+
+
+class OrcidName(BaseModel):
+    """Modela o nome da pessoa com base nos dados do ORCiD."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    given_names: str | None = Field(default=None, alias="given-names")
+    family_name: str | None = Field(default=None, alias="family-name")
+    credit_name: str | None = Field(default=None, alias="credit-name")
+
+    @field_validator(
+        "given_names",
+        "family_name",
+        "credit_name",
+        mode="before",
+    )
+    @classmethod
+    def unwrap_orcid_value(cls, value: object) -> object:
+        if isinstance(value, dict):
+            return value.get("value")
+        return value
+
+
+class OrcidBiography(BaseModel):
+    """Modela a bio da pessoa com base nos dados do ORCiD."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    content: str | None = None
+
+
+class OrcidPerson(BaseModel):
+    """Modela uma pessoa com base nos dados da consulta pública ao ORCiD."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    name: OrcidName | None = None
+    biography: OrcidBiography | None = None
+
+
+class OrcidRecord(BaseModel):
+    """Modela o registro ORCiD retornado pela consulta pública."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    orcid_identifier: OrcidIdentifier = Field(alias="orcid-identifier")
+    person: OrcidPerson | None = None
+
+    def _name(self) -> OrcidName | None:
+        person = self.person
+        return person.name if person is not None else None
+
+    @property
+    def orcid(self) -> str:
+        return self.orcid_identifier.orcid
+
+    @property
+    def uri(self) -> str:
+        return f"https://orcid.org/{self.orcid}"
+
+    @property
+    def credit_name(self) -> str | None:
+        name = self._name()
+        return name.credit_name if name is not None else None
+
+    @property
+    def given_names(self) -> str | None:
+        name = self._name()
+        return name.given_names if name is not None else None
+
+    @property
+    def family_name(self) -> str | None:
+        name = self._name()
+        return name.family_name if name is not None else None
+
+    @property
+    def biography(self) -> str | None:
+        return (
+            self.person.biography.content
+            if self.person and self.person.biography
+            else None
+        )
+
+    @property
+    def full_name(self) -> str | None:
+        parts = [part for part in (self.given_names, self.family_name) if part]
+        return " ".join(parts) or None
+
+    @property
+    def display_name(self) -> str | None:
+        return self.credit_name or self.full_name

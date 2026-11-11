@@ -3,15 +3,11 @@
 Este pacote define os modelos de dados dos Documentários e fornece
 utilitários de validação, normalização e georreferenciamento, além de
 utilitários para linha de comando e (futuramente) uma interface web.
-
-Como usar:
-
-    from wasth import Work
 """
 
-__version__ = "0.2.1"
+__version__ = "0.6.0"
 
-__all__ = ["Work", "f_valida"]
+__all__ = ["Work"]
 
-from .core.models import Work
-from .core.valida_yaml import f_valida
+
+from .models import Work
