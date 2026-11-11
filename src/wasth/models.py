@@ -1,60 +1,35 @@
 import datetime
-import sys
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Self
 
 import frontmatter
 import geojson
-from arqtrad_schema.datamodel.arqtrad_schema_pydantic import \
-    Concept as _Concept
-from arqtrad_schema.datamodel.arqtrad_schema_pydantic import (GeographicExtent,
-                                                              GeographicPoint,
-                                                              Site)
+from arqtrad_schema.datamodel.arqtrad_schema_pydantic import Concept as _Concept
+from arqtrad_schema.datamodel.arqtrad_schema_pydantic import (
+    GeographicExtent,
+    GeographicPoint,
+    Site,
+)
 from arqtrad_schema.datamodel.arqtrad_schema_pydantic import Thing as _Thing
 from arqtrad_schema.datamodel.arqtrad_schema_pydantic import Work as _Work
 from openlocationcode import openlocationcode
-from pydantic import field_validator, model_validator
-from pyorcid_checksum import ORCID_Checksum
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from rdflib import URIRef
 from ruamel.yaml import YAML
 
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    from typing_extensions import Self
+from .core.orcid import parse_orcid
 
-yaml = YAML(typ='rt')
+yaml = YAML(typ="rt")
 
 
-ORCID_CHECKER = ORCID_Checksum()
-ORCID_PREFIXES = ("orcid:", "https://orcid.org/", "http://orcid.org/")
 SITE_FIELDS = ("site", "former_site", "intended_site", "other_site")
 CONCEPT_REF_FIELDS = ("broader", "narrower", "relation", "mapping")
- 
 
-def _parse_orcid(orcid: str | URIRef) -> str:
-    """Retorna o número do ORCiD para conferência na API
 
-    :params: Aceita o número do ORCiD, o link completo ou a CURIE na forma
-    `orcid:1234-5678-901X`.
-    :returns: Retorna o número simples do ORCiD validado para a checksum, sem
-    verificar a sua existência na API.
-    :rtype: str
-    """
-
-    orcid_number = str(orcid).strip()
-    if not orcid_number:
-        raise ValueError("ORCiD inexistente.")
-    for prefix in ORCID_PREFIXES:
-        if orcid_number.lower().startswith(prefix):
-            orcid_number = orcid_number[len(prefix):]
-            break
-    orcid_number = orcid_number.strip("/ ").upper()
-
-    if not ORCID_CHECKER.check_orcid_checksum(orcid_number):
-        raise ValueError(f"ORCID iD inválido: {orcid_number!r}")
-    return ORCID_CHECKER.parse_orcid(orcid_number)
-
+# -----------------------------------------------------------------------------
+# Utilidades para processar Schema
+# -----------------------------------------------------------------------------
 def site_location(location: GeographicPoint | None) -> geojson.Point | None:
     """Ponto GeoJSON (lon, lat[, alt]) a partir das coordenadas."""
     if location is None:
@@ -65,9 +40,10 @@ def site_location(location: GeographicPoint | None) -> geojson.Point | None:
     p = geojson.Point(coords)
     return p if p.is_valid else None
 
+
 def site_extent(
-        extent: GeographicExtent | None
-    ) -> geojson.Polygon | geojson.MultiPolygon | None:
+    extent: GeographicExtent | None,
+) -> geojson.Polygon | geojson.MultiPolygon | None:
     """Polígono(s) de implantação a partir das coordenadas."""
     if extent is None:
         return None
@@ -82,6 +58,19 @@ def site_extent(
     return footprint if footprint.is_valid else None
 
 
+def ref_id(ref) -> str | None:
+    """`id` do conceito alvo de uma referência.
+
+    Aceita tanto `concept_name` como objeto Concept (esquema atual, `inlined:
+    true`) quanto como string (se o esquema passar a `inlined: false`).
+    """
+    target = ref.concept_name
+    return target if isinstance(target, str) else getattr(target, "id", None)
+
+
+# -----------------------------------------------------------------------------
+# Subclasses de Schema
+# -----------------------------------------------------------------------------
 class Thing(_Thing):
     """Dados e métodos comuns a todas as classes de objetos do projeto WASTH:
     Work (obras de arquitetura), Place (lugares), e Concept (itens de vocabulário).
@@ -125,21 +114,17 @@ class Thing(_Thing):
     @field_validator("author", "authors", mode="before")
     @classmethod
     def validate_orcid(
-            cls,
-            value: list[str | URIRef] | str | URIRef | None
+        cls, value: list[str | URIRef] | str | URIRef | None
     ) -> str | list[str] | None:
         """Return a bare, validated ORCID iD using PyORCID-checker."""
         if value is None:
             return value
         if isinstance(value, (list, tuple)):
-            return [ _parse_orcid(v) for v in value ]
-        return _parse_orcid(value)
+            return [parse_orcid(v) for v in value]
+        return parse_orcid(value)
 
     @field_validator("record_date", mode="after")
-    def validate_record_date(
-            cls,
-            value: datetime.date | None
-    ) -> datetime.date | None:
+    def validate_record_date(cls, value: datetime.date | None) -> datetime.date | None:
         today = datetime.date.today()
         if value is None:
             return today
@@ -150,14 +135,14 @@ class Thing(_Thing):
     @model_validator(mode="after")
     def exactly_one_author_field(self):
         has_author = self.author is not None
-        has_authors = bool(self.authors)   # empty list counts as absent
+        has_authors = bool(self.authors)  # empty list counts as absent
         if has_author == has_authors:
             raise ValueError("Informe exatamente um entre `author` e `authors`")
         return self
 
+
 class Work(Thing, _Work):
-    """Arcabouço dos dados e métodos das fichas de obras.
-    """
+    """Arcabouço dos dados e métodos das fichas de obras."""
 
     def _iter_sites(self) -> Iterator[tuple[str, int, Site]]:
         """Percorre todos os sítios, seja campo único ou lista."""
@@ -222,19 +207,9 @@ class Work(Thing, _Work):
         return site_extent(self.site.extent) if self.site.extent else None
 
 
-
-def ref_id(ref) -> str | None:
-    """`id` do conceito alvo de uma referência.
- 
-    Aceita tanto `concept_name` como objeto Concept (esquema atual, `inlined:
-    true`) quanto como string (se o esquema passar a `inlined: false`).
-    """
-    target = ref.concept_name
-    return target if isinstance(target, str) else getattr(target, "id", None)
- 
-
 class Concept(Thing, _Concept):
     """Modelo dos conceitos do vocabulário controlado."""
+
     @classmethod
     def from_post(cls, post):
         if post.metadata.get("narrower"):
@@ -253,11 +228,11 @@ class Concept(Thing, _Concept):
         for name in CONCEPT_REF_FIELDS:
             for i, ref in enumerate(getattr(self, name) or []):
                 yield name, i, ref
- 
+
     @property
     def broader_ids(self) -> set[str | None]:
         return {ref_id(r) for r in self.broader or [] if ref_id(r)}
- 
+
     @property
     def relation_ids(self) -> set[str | None]:
         return {ref_id(r) for r in self.relation or [] if ref_id(r)}
@@ -270,18 +245,20 @@ class Concept(Thing, _Concept):
         data = dict(data)
         for name in ("broader", "narrower", "relation", "mapping"):
             data[name] = [
-                {**r, "concept_name": {"id": r["concept_name"]}}
-                if isinstance(r, dict) and isinstance(r.get("concept_name"), str)
-                else r
+                (
+                    {**r, "concept_name": {"id": r["concept_name"]}}
+                    if isinstance(r, dict) and isinstance(r.get("concept_name"), str)
+                    else r
+                )
                 for r in data.get(name) or []
             ] or data.get(name)
         return data
- 
+
     @model_validator(mode="after")
     def _validate_concept(self):
         if not self.id:
             raise ValueError("Todo conceito precisa de `id`.")
- 
+
         seen: dict[str, set[str]] = {}
         for name, i, ref in self.iter_references():
             target = ref_id(ref)
@@ -292,10 +269,84 @@ class Concept(Thing, _Concept):
             if target in seen.setdefault(name, set()):
                 raise ValueError(f"{name}[{i}]: {target!r} aparece mais de uma vez.")
             seen[name].add(target)
- 
+
         overlap = seen.get("broader", set()) & seen.get("relation", set())
         if overlap:
             raise ValueError(
                 f"Conceitos em `broader` e `relation` ao mesmo tempo: {sorted(overlap)}"
             )
         return self
+
+
+# -----------------------------------------------------------------------------
+# ORCiD
+# -----------------------------------------------------------------------------
+class OrcidName(BaseModel):
+    """Modela o nome da pessoa com base nos dados do ORCiD."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    given_names: str | None = Field(default=None, alias="given-names")
+    family_name: str | None = Field(default=None, alias="family-name")
+    credit_name: str | None = Field(default=None, alias="credit-name")
+
+
+class OrcidBiography(BaseModel):
+    """Modela a bio da pessoa com base nos dados do ORCiD."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    content: str | None = None
+
+
+class OrcidPerson(BaseModel):
+    """Modela uma pessoa com base nos dados da consulta pública ao ORCiD."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    name: OrcidName | None = None
+    biography: OrcidBiography | None = None
+
+
+class OrcidRecord(BaseModel):
+    """Modela o registro ORCiD retornado pela consulta pública."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    orcid: str = Field(alias="path")
+    person: OrcidPerson | None = None
+
+    @property
+    def credit_name(self) -> str | None:
+        return (
+            self.person.name.credit_name if self.person and self.person.name else None
+        )
+
+    @property
+    def given_names(self) -> str | None:
+        return (
+            self.person.name.given_names if self.person and self.person.name else None
+        )
+
+    @property
+    def family_name(self) -> str | None:
+        return (
+            self.person.name.family_name if self.person and self.person.name else None
+        )
+
+    @property
+    def biography(self) -> str | None:
+        return (
+            self.person.biography.content
+            if self.person and self.person.biography
+            else None
+        )
+
+    @property
+    def full_name(self) -> str | None:
+        parts = [part for part in (self.given_names, self.family_name) if part]
+        return " ".join(parts) or None
+
+    @property
+    def display_name(self) -> str | None:
+        return self.credit_name or self.full_name

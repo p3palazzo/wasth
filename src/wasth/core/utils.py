@@ -1,34 +1,10 @@
 import re
 
+from rdflib import URIRef
 from unidecode import unidecode
 
-from .refs import *
+from wasth.models_old.refs import *
 
-
-def repo_label(repo: LIDORepository) -> str | None:
-    """Gera nome do repositório para uso em slugs."""
-    repo_id = repo.get('id', {})
-    if isinstance(repo_id, dict):
-        code = repo_id.get('display')
-        if isinstance(code, str) and code.strip():
-            return code.strip()
-    repo_display = repo.get('display')
-    if isinstance(repo_display, str) and repo_display.strip():
-        return repo_display
-    return None
-
-def walk_repo(repo: LIDORepository) -> list[str]:
-    """Gera hierarquia de nomes de repositórios para uso em slugs usando repo_label().
-    """
-    hierarchy: list[str] = []
-    current: LIDORepository | None = repo
-    while current is not None:
-        label = repo_label(current)
-        if label:
-            hierarchy.append(label)
-        current = current.part_of
-    hierarchy.reverse()
-    return hierarchy
 
 def pt_ascii(text: str) -> str:
     """Normaliza nomes sem acentos, usando convenções telegráficas."""
@@ -67,3 +43,32 @@ def pt_ascii(text: str) -> str:
     text = re.sub(r"[^\w]+", "_", text)
     text = re.sub(r"_[_-]+", "_", text)
     return text.strip("_-")
+
+
+# --------------------------------------------------------------------------
+# Deprecated.
+# --------------------------------------------------------------------------
+def repo_label(repo: LIDORepository) -> str | None:
+    """Gera nome do repositório para uso em slugs."""
+    repo_id = repo.get("id", {})
+    if isinstance(repo_id, dict):
+        code = repo_id.get("display")
+        if isinstance(code, str) and code.strip():
+            return code.strip()
+    repo_display = repo.get("display")
+    if isinstance(repo_display, str) and repo_display.strip():
+        return repo_display
+    return None
+
+
+def walk_repo(repo: LIDORepository) -> list[str]:
+    """Gera hierarquia de nomes de repositórios para uso em slugs usando repo_label()."""
+    hierarchy: list[str] = []
+    current: LIDORepository | None = repo
+    while current is not None:
+        label = repo_label(current)
+        if label:
+            hierarchy.append(label)
+        current = current.part_of
+    hierarchy.reverse()
+    return hierarchy
