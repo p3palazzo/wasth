@@ -5,6 +5,8 @@ from pathlib import Path
 
 import frontmatter
 import geojson
+from arqtrad_schema.datamodel.arqtrad_schema_pydantic import \
+    Concept as _Concept
 from arqtrad_schema.datamodel.arqtrad_schema_pydantic import (GeographicExtent,
                                                               GeographicPoint,
                                                               Site)
@@ -23,9 +25,12 @@ else:
 
 yaml = YAML(typ='rt')
 
+
 ORCID_CHECKER = ORCID_Checksum()
 ORCID_PREFIXES = ("orcid:", "https://orcid.org/", "http://orcid.org/")
 SITE_FIELDS = ("site", "former_site", "intended_site", "other_site")
+CONCEPT_REF_FIELDS = ("broader", "narrower", "relation", "mapping")
+ 
 
 def _parse_orcid(orcid: str | URIRef) -> str:
     """Retorna o número do ORCiD para conferência na API
@@ -75,6 +80,7 @@ def site_extent(
         case _:
             footprint = geojson.Polygon(coords)
     return footprint if footprint.is_valid else None
+
 
 class Thing(_Thing):
     """Dados e métodos comuns a todas as classes de objetos do projeto WASTH:
@@ -214,3 +220,82 @@ class Work(Thing, _Work):
     @property
     def site_extent(self) -> geojson.Polygon | geojson.MultiPolygon | None:
         return site_extent(self.site.extent) if self.site.extent else None
+
+
+
+def ref_id(ref) -> str | None:
+    """`id` do conceito alvo de uma referência.
+ 
+    Aceita tanto `concept_name` como objeto Concept (esquema atual, `inlined:
+    true`) quanto como string (se o esquema passar a `inlined: false`).
+    """
+    target = ref.concept_name
+    return target if isinstance(target, str) else getattr(target, "id", None)
+ 
+
+class Concept(Thing, _Concept):
+    """Modelo dos conceitos do vocabulário controlado."""
+    @classmethod
+    def from_post(cls, post):
+        if post.metadata.get("narrower"):
+            raise ValueError("`narrower` é derivado de `broader`; não preencher.")
+        return super().from_post(post)
+
+    @classmethod
+    def from_file(cls, f: Path):
+        post = frontmatter.load(f)
+        if not post.metadata.get("id"):
+            post.metadata["id"] = Path(f).stem
+        return cls.from_post(post)
+
+    def iter_references(self):
+        """Percorre (campo, índice, referência) em broader/narrower/relation/mapping."""
+        for name in CONCEPT_REF_FIELDS:
+            for i, ref in enumerate(getattr(self, name) or []):
+                yield name, i, ref
+ 
+    @property
+    def broader_ids(self) -> set[str | None]:
+        return {ref_id(r) for r in self.broader or [] if ref_id(r)}
+ 
+    @property
+    def relation_ids(self) -> set[str | None]:
+        return {ref_id(r) for r in self.relation or [] if ref_id(r)}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _stubs_from_ids(cls, data):
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        for name in ("broader", "narrower", "relation", "mapping"):
+            data[name] = [
+                {**r, "concept_name": {"id": r["concept_name"]}}
+                if isinstance(r, dict) and isinstance(r.get("concept_name"), str)
+                else r
+                for r in data.get(name) or []
+            ] or data.get(name)
+        return data
+ 
+    @model_validator(mode="after")
+    def _validate_concept(self):
+        if not self.id:
+            raise ValueError("Todo conceito precisa de `id`.")
+ 
+        seen: dict[str, set[str]] = {}
+        for name, i, ref in self.iter_references():
+            target = ref_id(ref)
+            if not target:
+                raise ValueError(f"{name}[{i}] não aponta para nenhum conceito.")
+            if name != "mapping" and target == self.id:
+                raise ValueError(f"{name}[{i}] aponta para o próprio conceito.")
+            if target in seen.setdefault(name, set()):
+                raise ValueError(f"{name}[{i}]: {target!r} aparece mais de uma vez.")
+            seen[name].add(target)
+ 
+        overlap = seen.get("broader", set()) & seen.get("relation", set())
+        if overlap:
+            raise ValueError(
+                f"Conceitos em `broader` e `relation` ao mesmo tempo: {sorted(overlap)}"
+            )
+        return self
