@@ -27,10 +27,21 @@ from .core.orcid import orcid_profile, parse_orcid
 from .models import Thing
 
 WASTH_ENV = ".wasth.env"
-API_ORCID = "https://pub.orcid.org/v3.0/{orcid}/person"
 
 app = typer.Typer(
-    help="WASTH — Web App para Sítios Tradicionais e Históricos",
+    help=("""
+Interfaz de linha de comando da aplicação
+[bold]WASTH[/bold] : Web App para Sítios Tradicionais e Históricos.
+
+Esta aplicação foi concebida para processar as fichas dos Documentários da
+Arquitetura Tradicional. O portal do projeto se encontra em
+<https://tradicional.arq.br>.
+A documentação da estrutura de dados pode ser consutada em
+<https://tradicional.arq.br/schema/>.
+
+Digite um dos [bold]Commands[/bold] abaixo para começar ou rode novamente o
+comando [bold]wasth[/bold] com uma ou mais dentre as [bold]Options[/bold] abaixo.
+"""),
     no_args_is_help=True,
 )
 
@@ -119,31 +130,66 @@ def geojson(
         return None
 
 
-@app.callback(invoke_without_command=True)
-def main(ctx: typer.Context) -> None:
+# --------------------------------------------------------------------------
+# Helper functions
+# --------------------------------------------------------------------------
+def get_dir(label: str, workdir: str | None) -> Path:
+    """Seleciona uma pasta existente, pedindo ao usuário se preciso.
+
+    :param label: Rótulo que indica o propósito da pasta.
+    :type label: str
+    :param workdir: Pasta atual.
+    :type workdir: str
+    :return: Um caminho para a pasta selecionada.
+    :rtype: pathlib.Path
     """
-     Interfaz de linha de comando da aplicação
-     [bold]WASTH[/bold] : Web App para Sítios Tradicionais e Históricos
+
+
+# --------------------------------------------------------------------------
+# Entrypoint
+# --------------------------------------------------------------------------
+@app.callback(invoke_without_command=True)
+def main(
+    ctx: typer.Context,
+    orcid: Annotated[
+        str | None,
+        typer.Option(envvar="WASTH_ORCID", help="Seu número do ORCiD."),
+    ] = None,
+    works: Annotated[
+        str | None,
+        typer.Option(
+            envvar="WASTH_WORKS_DIR",
+            help="Pasta contento as fichas de obras em formato Markdown.",
+        ),
+    ] = None,
+    vocab: Annotated[
+        str | None,
+        typer.Option(
+            envvar="WASTH_VOCAB_DIR",
+            help="Pasta contento as fichas de vocabulário controlado em formato Markdown.",
+        ),
+    ] = None,
+    env_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--env-file",
+            exists=True,
+            dir_okay=False,
+            help=("""Arquivo/ficheiro de configuração. Se indicado, a
+configuração completa é usada sem pedir confirmação (padrão: .wasth.env na
+pasta atual, com confirmação)."""),
+        ),
+    ] = None,
+) -> None:
+    """
+    Interfaz de linha de comando da aplicação
+    [bold]WASTH[/bold] : Web App para Sítios Tradicionais e Históricos
 
     Esta aplicação foi concebida para processar as fichas
     dos Documentários da Arquitetura Tradicional.
 
     Digite os comandos e as opções abaixo para usar as funcionalidades do WASTH.
     """
-    rprint("""
--------------------------------------------------------
- Interfaz de linha de comando da aplicação
- [bold]WASTH[/bold] : Web App para Sítios Tradicionais e Históricos
--------------------------------------------------------
-
-Esta aplicação foi concebida para processar as fichas
-dos Documentários da Arquitetura Tradicional.
-O site do projeto se encontra em
-<https://tradicional.arq.br>.
-
-Para instruções, digitar o comando:
-uv run wasth --help
-        """)
 
 
 if __name__ == "__main__":
