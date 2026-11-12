@@ -67,17 +67,10 @@ def orcid_profile(
         response = client.get(f"{ORCID_BASE_URL}/{orcid}")
 
     if response.status_code == 404:
-        raise OrcidError(f"Nenhum registro encontrado para ORCiD {orcid}.")
+        raise ValueError(f"Nenhum registro encontrado para ORCiD {orcid}.")
     if response.status_code != 200:
-        raise OrcidError(f"O servidor ORCiD respondeu HTTP {response.status_code}.")
+        raise ValueError(f"O servidor ORCiD respondeu HTTP {response.status_code}.")
     return OrcidRecord.model_validate(response.json())
-
-
-# -----------------------------------------------------------------------------
-# Modelo de erro
-# -----------------------------------------------------------------------------
-class OrcidError(Exception):
-    """Erro genérico na consulta ao ORCID."""
 
 
 # -----------------------------------------------------------------------------

@@ -3,12 +3,12 @@
 Configuração (ORCiD, pasta de Works, pasta de Concepts) é lida, em ordem
 de prioridade, de:
 
-1. opções de linha de comando (``--orcid``, ``--works``, ``--concepts``);
-2. variáveis de ambiente (``WASTH_ORCID``, ``WASTH_WORKS_DIR``,
-   ``WASTH_CONCEPTS_DIR``);
+1. opções de linha de comando (``--orcid``, ``--fichas``, ``--vocab``);
+2. variáveis de ambiente (``WASTH_ORCID``, ``WASTH_PROFILE_NAME``,
+   ``WASTH_WORKS_DIR``, ``WASTH_VOCAB_DIR``);
 3. arquivo ``.wasth.env`` na pasta onde o comando é executado.
 
-Dependências: typer, rich, python-dotenv, httpx
+Dependências: typer, rich, python-dotenv, httpx, PyORCIDChecksum
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from .core import geoprocessa, models, valida_yaml
 from .core.orcid import orcid_profile, parse_orcid
 from .models import Thing
 
-WASTH_ENV = ".wasth.env"
+WASTH_ENV = "wasth.env"
 
 app = typer.Typer(
     help=("""
@@ -47,27 +47,32 @@ comando [bold]wasth[/bold] com uma ou mais dentre as [bold]Options[/bold] abaixo
 
 
 @dataclass
-class Config:
+class WASTHConfig:
     """Configuração da sessão, disponível em `ctx.obj`."""
 
     orcid: str
     profile_name: str
     works: Path
-    concepts: Path
+    vocab: Path
 
 
 # --------------------------------------------------------------------------
 # ORCiD
 # --------------------------------------------------------------------------
-def orcid_profile_name(orcid: str | URIRef) -> str | None:
+def orcid_profile_name(orcid: str | URIRef | None) -> str | None:
     """Puxa o nome do usuário/utente a partir do número ORCiD informado.
 
-    :params: orcid: o número ORCiD do usuário.
+    :param orcid: o número ORCiD do usuário.
     :returns: Nome da pessoa, ou vazio se o nome do perfil não existir, se
     o número do ORCiD for inválido, ou se a API estiver inacessível.
     :rtype: str | None
     """
-    orcid_number = parse_orcid(orcid)
+    if not orcid:
+        orcid = typer.prompt("Por favor informe o seu número do ORCiD:")
+    try:
+        orcid_number = parse_orcid(orcid)
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from e
     try:
         profile = orcid_profile(orcid_number)
     except ValueError as e:
@@ -138,11 +143,85 @@ def get_dir(label: str, workdir: str | None) -> Path:
 
     :param label: Rótulo que indica o propósito da pasta.
     :type label: str
-    :param workdir: Pasta atual.
+    :param workdir: Pasta atualmente selecionada.
     :type workdir: str
     :return: Um caminho para a pasta selecionada.
     :rtype: pathlib.Path
     """
+    value = workdir
+    while True:
+        if not value:
+            value = typer.prompt(f"Informar a pasta contendo os arquivos de {label}:")
+        dir = Path(value).expanduser().resolve()
+        if not dir:
+            create = typer.confirm(f"Criar pasta {str(dir)}?")
+            if not confirm:
+                continue
+            dir.mkdir(parents=True)
+        if dir.is_dir():
+            rprint(f"pasta selecionada: {str(dir)}")
+            return dir
+        rprint(f"[red]Pasta não encontrada:[/red] {dir}")
+        value = None
+
+def setup_config(
+    env_file: Path,
+    orcid: str | URIRef | None,
+    profile_name: str | None,
+    works: str | None,
+    vocab: str | None,
+    confirm: bool = True,
+) -> tuple[WASTHConfig, bool]:
+    """Processa a configuração e gera objeto WASTHConfig.
+
+    :param env_file: Localização do arquivo/ficheiro de configuração.
+    :param orcid: ORCiD do usuário/utente.
+    :param works: Localização da pasta com as fichas de obras.
+    :param vocab: Localização da pasta com o vocabulário controlado.
+    :param confirm: Indica se é preciso confirmar as alterações.
+    :return: Tuple com o objeto WASTHConfig e um bool notificando alteração.
+    :rtype: tuple(WASTHConfig, bool)
+    """
+    rprint(f"[dim]Arquivo/ficheiro de configuração escolhido: {env_file}[/dim]")
+    if orcid and works and vocab:
+        rprint("[bold]Configuração encontrada:[/bold]")
+        rprint(f"  ORCiD: {orcid}")
+        rprint(f"  Nome: {profile_name}")
+        rprint(f"  Pasta de fichas de obras: {str(works)}")
+        rprint(f"  Pasta do vocabulário controlado: {str(vocab)}")
+        if confirm and not typer.confirm(
+            "Prosseguir com os valores existentes?", default=True
+        ):
+            orcid = typer.prompt("ORCiD", default=orcid)
+            works = typer.prompt("Pasta contendo as fichas", default=works)
+            vocab = typer.prompt(
+                "Pasta contendo o vocabulário controlado", default=vocab
+            )
+
+    profile_name = orcid_profile_name(orcid)
+    orcid_number = parse_orcid(orcid)
+    works_dir = get_dir(works)
+    vocab_dir = get_dir(vocab)
+
+    config = WASTHConfig(orcid_number, profile_name, works_dir, vocab_dir)
+    changed = orcid_number != orcid |
+        str(works_dir) != str(Path(works).expanduser().resolve()) |
+        str(vocab_dir) != str(Path(vocab).expanduser().resolve())
+
+    return (config, changed)
+
+def write_env(env_file: Path, config: WASTHConfig) -> Path:
+    """Grava as configurações do usuário/utente."""
+    env_file.touch(exist_ok=True)
+    set_key(str(env_file), "WASTH_ORCID", config.orcid)
+    set_key(str(env_file), "WASTH_PROFILE_NAME", config.profile_name)
+    set_key(str(env_file), "WASTH_WORKS_DIR", str(config.works))
+    set_key(str(env_file), "WASTH_VOCAB_DIR", str(config.vocab))
+    rprint(f"[green]Configuração gravada em {env_file}:[/green]")
+    rprint(f"ORCiD: {WASTH_ORCID}")
+    rprint(f"Nome: {WASTH_PROFILE_NAME}")
+    rprint(f"Fichas de obras: {WASTH_WORKS_DIR}")
+    rprint(f"Vocabulário controlado: {WASTH_VOCAB_DIR}")
 
 
 # --------------------------------------------------------------------------
@@ -186,11 +265,11 @@ pasta atual, com confirmação)."""),
 
     Confirma, atualiza e grava as variáveis do usuário/utente:
 
-        1. Verifica se o ORCiD do usuário/utente é válido, e cumprimenta
-           gerando o nome da pessoa.
-
-        2. Verifica se `--env-file` foi declarado e existe, caso contrário
+        1. Verifica se `--env-file` foi declarado e existe, caso contrário
            verifica se `./.wasth.env` existe.
+
+        2. Verifica se o ORCiD do usuário/utente é válido, e cumprimenta
+           gerando o nome da pessoa.
 
     :param orcid: Aceita o número do ORCiD, o link completo ou a CURIE na forma
     `orcid:1234-5678-9012-345X`.
@@ -203,15 +282,37 @@ pasta atual, com confirmação)."""),
     aceita o caminho para um arquivo/ficheiro contendo todas as opções desta
     função.
     """
-    if not parse_orcid(orcid):
-        rprint(f"O ORCiD {orcid} não é válido. Verifique e tente novamente.")
-    if not orcid_profile_name(orcid):
-        rprint(f"""Houve um problema ao localizar o ORCiD {orcid}.
-Pode ser que o registro não exista, ou apenas um problema de rede.
-Deseja continuar mesmo assim?
-        """)
-    full_name = orcid_profile_name(orcid)
-    rprint(f"""Olá {full_name}.""")
+    env_declared = env_file is not None
+    if not env_file:
+        env_file = Path.cwd() / WASTH_ENV
+    env_from_file = dotenv_values(env_file) if env_file.is_file() else {}
+    orcid = parse_orcid(orcid) or env_from_file.get("WASTH_ORCID")
+    profile_name = orcid_profile_name(orcid) if orcid else env_from_file("WASTH_PROFILE_NAME")
+    works = works or env_from_file.get("WASTH_WORKS_DIR")
+    vocab = vocab or env_from_file.get("WASTH_VOCAB_DIR")
+
+    config, changed = setup_config(
+        env_file, orcid, profile_name, works, vocab, confirm=not env_declared
+    )
+
+    if changed and typer.confirm(
+        f"Gravar configuração em {env_file.name}?", default=True
+    ):
+        write_env(env_file, config)
+
+    ctx.obj = config
+
+
+# --------------------------------------------------------------------------
+# Subcomandos
+# --------------------------------------------------------------------------
+@app.command()
+def info(ctx: typer.Context) -> None:
+    """Mostra a configuração em uso."""
+    c: Config = ctx.obj
+    rprint(f"Você: {c.profile_name} ({c.orcid})")
+    rprint(f"Fichas:    {c.works}")
+    rprint(f"Vocabulário controlado: {c.vocab}")
 
 
 if __name__ == "__main__":
