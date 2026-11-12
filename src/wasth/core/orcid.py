@@ -28,7 +28,7 @@ ORCID_PREFIXES = ("orcid:", "https://orcid.org/", "http://orcid.org/")
 def parse_orcid(orcid: str | URIRef) -> str:
     """Retorna o número do ORCiD para conferência na API
 
-    :params: Aceita o número do ORCiD, o link completo ou a CURIE na forma
+    :param orcid: Aceita o número do ORCiD, o link completo ou a CURIE na forma
     `orcid:1234-5678-901X`.
     :returns: Retorna o número simples do ORCiD validado para a checksum, sem
     verificar a sua existência na API.

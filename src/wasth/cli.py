@@ -158,6 +158,7 @@ def main(
     works: Annotated[
         str | None,
         typer.Option(
+            "--fichas",
             envvar="WASTH_WORKS_DIR",
             help="Pasta contento as fichas de obras em formato Markdown.",
         ),
@@ -181,15 +182,36 @@ pasta atual, com confirmação)."""),
         ),
     ] = None,
 ) -> None:
-    """
-    Interfaz de linha de comando da aplicação
-    [bold]WASTH[/bold] : Web App para Sítios Tradicionais e Históricos
+    """Ponto de entrada da aplicação WASTH, recebe as opções e variáveis.
 
-    Esta aplicação foi concebida para processar as fichas
-    dos Documentários da Arquitetura Tradicional.
+    Confirma, atualiza e grava as variáveis do usuário/utente:
 
-    Digite os comandos e as opções abaixo para usar as funcionalidades do WASTH.
+        1. Verifica se o ORCiD do usuário/utente é válido, e cumprimenta
+           gerando o nome da pessoa.
+
+        2. Verifica se `--env-file` foi declarado e existe, caso contrário
+           verifica se `./.wasth.env` existe.
+
+    :param orcid: Aceita o número do ORCiD, o link completo ou a CURIE na forma
+    `orcid:1234-5678-9012-345X`.
+    :param works: Acionado pela opção `--fichas` na linha de comando, aceita um
+    nome de pasta contendo as fichas de obras em formato Markdown.
+    Por padrão é `casa`.
+    :param vocab: Aceita um nome de pasta contendo as fichas de vocabulário
+    controlado. Por padrão é `thesaurus`.
+    :param env_file: Acionado pela opção `--env-file` na linha de comando,
+    aceita o caminho para um arquivo/ficheiro contendo todas as opções desta
+    função.
     """
+    if not parse_orcid(orcid):
+        rprint(f"O ORCiD {orcid} não é válido. Verifique e tente novamente.")
+    if not orcid_profile_name(orcid):
+        rprint(f"""Houve um problema ao localizar o ORCiD {orcid}.
+Pode ser que o registro não exista, ou apenas um problema de rede.
+Deseja continuar mesmo assim?
+        """)
+    full_name = orcid_profile_name(orcid)
+    rprint(f"""Olá {full_name}.""")
 
 
 if __name__ == "__main__":

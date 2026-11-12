@@ -11,6 +11,9 @@ VALID_ORCID = "0000-0002-0187-774X"
 INVALID_ORCID = "0000-1234-5678"
 
 
+# -----------------------------------------------------------------------------
+# Fixtures and mocks
+# -----------------------------------------------------------------------------
 def make_transport(
     status_code: int = 200,
     json_data: dict[str, object] | None = None,
@@ -30,6 +33,9 @@ def valid_fixture() -> dict[str, object]:
     return json.loads((valid_fixture).read_text(encoding="utf-8"))
 
 
+# -----------------------------------------------------------------------------
+# Test functions
+# -----------------------------------------------------------------------------
 def test_parse_valid_orcid() -> None:
     full_valid_orcid_url = "https://orcid.org/" + VALID_ORCID
     orcid_curie = "orcid:" + VALID_ORCID

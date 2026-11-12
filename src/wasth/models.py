@@ -158,7 +158,7 @@ class Work(Thing, _Work):
         """
         Processa entradas de georreferenciamento
 
-        :params: Aceita a propriedade site_location do objeto Work
+        :param self: Aceita a propriedade site_location do objeto Work
         :returns: Gera ID no formato Open Location Code a partir da latitude e
         longitude inseridas na ficha ou na interface.
         :rtype: str
