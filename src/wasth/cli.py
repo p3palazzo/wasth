@@ -17,13 +17,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated
 
-import httpx
 import typer
 from dotenv import dotenv_values, set_key
+from rdflib import URIRef
 from rich import print as rprint
 
 from .core import geoprocessa, models, valida_yaml
-from .core.orcid import parse_orcid
+from .core.orcid import orcid_profile, parse_orcid
 from .models import Thing
 
 WASTH_ENV = ".wasth.env"
@@ -48,6 +48,20 @@ class Config:
 # --------------------------------------------------------------------------
 # ORCiD
 # --------------------------------------------------------------------------
+def orcid_profile_name(orcid: str | URIRef) -> str | None:
+    """Puxa o nome do usuário/utente a partir do número ORCiD informado.
+
+    :params: orcid: o número ORCiD do usuário.
+    :returns: Nome da pessoa, ou vazio se o nome do perfil não existir, se
+    o número do ORCiD for inválido, ou se a API estiver inacessível.
+    :rtype: str | None
+    """
+    orcid_number = parse_orcid(orcid)
+    try:
+        profile = orcid_profile(orcid_number)
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from e
+    return profile.full_name if profile else None
 
 
 @app.command()
