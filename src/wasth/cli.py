@@ -29,18 +29,20 @@ from .models import Thing
 WASTH_ENV = "wasth.env"
 
 app = typer.Typer(
-    help=("""
-Interfaz de linha de comando da aplicação
-[bold]WASTH[/bold] : Web App para Sítios Tradicionais e Históricos.
+    help=("""Interfaz de linha de comando da aplicação
+[b]WASTH: Web App para Sítios Tradicionais e Históricos[/b].
 
 Esta aplicação foi concebida para processar as fichas dos Documentários da
-Arquitetura Tradicional. O portal do projeto se encontra em
-<https://tradicional.arq.br>.
+Arquitetura Tradicional.
+O portal do projeto se encontra em <https://tradicional.arq.br>.
 A documentação da estrutura de dados pode ser consutada em
 <https://tradicional.arq.br/schema/>.
 
-Digite um dos [bold]Commands[/bold] abaixo para começar ou rode novamente o
-comando [bold]wasth[/bold] com uma ou mais dentre as [bold]Options[/bold] abaixo.
+Digite um dos [b]Commands[/b] abaixo para começar ou rode novamente o
+comando [b]wasth[/b] com uma ou mais dentre as [bold]Options[/bold] abaixo.
+
+Se usa o [b]WASTH[/b] pela primeira vez, comece por rodar o comando
+[r] wasth configure [/r]
 """),
     no_args_is_help=True,
 )
@@ -164,6 +166,7 @@ def get_dir(label: str, workdir: str | None) -> Path:
         rprint(f"[red]Pasta não encontrada:[/red] {dir}")
         value = None
 
+
 def setup_config(
     env_file: Path,
     orcid: str | URIRef | None,
@@ -184,7 +187,7 @@ def setup_config(
     """
     rprint(f"[dim]Arquivo/ficheiro de configuração escolhido: {env_file}[/dim]")
     if orcid and works and vocab:
-        rprint("[bold]Configuração encontrada:[/bold]")
+        rprint("[b]Configuração encontrada:[/b]")
         rprint(f"  ORCiD: {orcid}")
         rprint(f"  Nome: {profile_name}")
         rprint(f"  Pasta de fichas de obras: {str(works)}")
@@ -204,11 +207,14 @@ def setup_config(
     vocab_dir = get_dir(vocab)
 
     config = WASTHConfig(orcid_number, profile_name, works_dir, vocab_dir)
-    changed = orcid_number != orcid |
-        str(works_dir) != str(Path(works).expanduser().resolve()) |
-        str(vocab_dir) != str(Path(vocab).expanduser().resolve())
+    changed = (
+        orcid_number != orcid
+        or str(works_dir) != str(Path(works).expanduser().resolve())
+        or str(vocab_dir) != str(Path(vocab).expanduser().resolve())
+    )
 
     return (config, changed)
+
 
 def write_env(env_file: Path, config: WASTHConfig) -> Path:
     """Grava as configurações do usuário/utente."""
@@ -228,7 +234,15 @@ def write_env(env_file: Path, config: WASTHConfig) -> Path:
 # Entrypoint
 # --------------------------------------------------------------------------
 @app.callback(invoke_without_command=True)
-def main(
+def main():
+    pass
+
+
+# --------------------------------------------------------------------------
+# Subcomandos
+# --------------------------------------------------------------------------
+@app.command()
+def configure(
     ctx: typer.Context,
     orcid: Annotated[
         str | None,
@@ -261,15 +275,7 @@ pasta atual, com confirmação)."""),
         ),
     ] = None,
 ) -> None:
-    """Ponto de entrada da aplicação WASTH, recebe as opções e variáveis.
-
-    Confirma, atualiza e grava as variáveis do usuário/utente:
-
-        1. Verifica se `--env-file` foi declarado e existe, caso contrário
-           verifica se `./.wasth.env` existe.
-
-        2. Verifica se o ORCiD do usuário/utente é válido, e cumprimenta
-           gerando o nome da pessoa.
+    """Confirma, atualiza e grava as variáveis do usuário/utente.
 
     :param orcid: Aceita o número do ORCiD, o link completo ou a CURIE na forma
     `orcid:1234-5678-9012-345X`.
@@ -287,7 +293,9 @@ pasta atual, com confirmação)."""),
         env_file = Path.cwd() / WASTH_ENV
     env_from_file = dotenv_values(env_file) if env_file.is_file() else {}
     orcid = parse_orcid(orcid) or env_from_file.get("WASTH_ORCID")
-    profile_name = orcid_profile_name(orcid) if orcid else env_from_file("WASTH_PROFILE_NAME")
+    profile_name = (
+        orcid_profile_name(orcid) if orcid else env_from_file("WASTH_PROFILE_NAME")
+    )
     works = works or env_from_file.get("WASTH_WORKS_DIR")
     vocab = vocab or env_from_file.get("WASTH_VOCAB_DIR")
 
@@ -303,9 +311,6 @@ pasta atual, com confirmação)."""),
     ctx.obj = config
 
 
-# --------------------------------------------------------------------------
-# Subcomandos
-# --------------------------------------------------------------------------
 @app.command()
 def info(ctx: typer.Context) -> None:
     """Mostra a configuração em uso."""

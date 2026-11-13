@@ -4,7 +4,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from wasth.core.orcid import OrcidError, OrcidRecord, orcid_profile, parse_orcid
+from wasth.core.orcid import OrcidRecord, orcid_profile, parse_orcid
 
 FIXTURES = Path(__file__).parent.parent / "data"
 VALID_ORCID = "0000-0002-0187-774X"
@@ -66,7 +66,7 @@ def test_missing_orcid_raises_orcid_error() -> None:
     transport = make_transport(status_code=404)
 
     with pytest.raises(
-        OrcidError, match="Nenhum registro encontrado para ORCiD 0000-1234-5678."
+        ValueError, match="Nenhum registro encontrado para ORCiD 0000-1234-5678."
     ):
         orcid_profile(INVALID_ORCID, transport=transport)
 
@@ -95,5 +95,5 @@ def test_orcid_request_uses_content_negotiation(
 def test_unexpected_status_raises_orcid_error(status_code: int) -> None:
     transport = make_transport(status_code)
 
-    with pytest.raises(OrcidError, match=f"HTTP {status_code}"):
+    with pytest.raises(ValueError, match=f"HTTP {status_code}"):
         orcid_profile("0000-0002-1825-0097", transport=transport)
