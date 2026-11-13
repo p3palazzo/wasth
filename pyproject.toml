@@ -45,6 +45,7 @@ dev = [
     "pre-commit>=4.6.0",
     "pylint>=4.0.6",
     "pylint-pytest>=1.1.7",
+    "pyright>=1.1.414",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
     "ruff>=0.15.12",
