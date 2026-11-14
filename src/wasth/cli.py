@@ -185,7 +185,7 @@ def get_dir(label: str, workdir: str | None) -> Path:
         dir = Path(value).expanduser().resolve()
         if not dir:
             create = typer.confirm(f"Criar pasta {str(dir)}?")
-            if not confirm:
+            if not create:
                 continue
             dir.mkdir(parents=True)
         if dir.is_dir():
@@ -219,10 +219,10 @@ def setup_config(
 
     if all_set:
         rprint("[b]Configuração encontrada:[/b]")
-        rprint(f"  ORCiD: {orcid}")
-        rprint(f"  Nome: {profile_name}")
-        rprint(f"  Pasta de fichas de obras: {str(works)}")
-        rprint(f"  Pasta do vocabulário controlado: {str(vocab)}")
+        rprint(f"  Seu ORCiD:              {orcid}")
+        rprint(f"  Seu nome:               {profile_name}")
+        rprint(f"  Fichas de obras:        {str(works)}")
+        rprint(f"  Vocabulário controlado: {str(vocab)}")
         if confirm and not typer.confirm(
             "Prosseguir com os valores existentes?", default=True
         ):
@@ -236,12 +236,14 @@ def setup_config(
     orcid_number, profile_name = orcid_resolve(orcid)
     works_dir = get_dir("fichas de obras", works)
     vocab_dir = get_dir("vocabulário controlado", vocab)
+    old_works = str(Path(works).expanduser().resolve()) if works else None
+    old_vocab = str(Path(vocab).expanduser().resolve()) if vocab else None
 
     config = WASTHConfig(orcid_number, profile_name, works_dir, vocab_dir)
     changed = not all_set or (
         orcid_number != orcid
-        or str(works_dir) != str(Path(works).expanduser().resolve())
-        or str(vocab_dir) != str(Path(vocab).expanduser().resolve())
+        or str(works_dir) != old_works
+        or str(vocab_dir) != old_vocab
     )
 
     return (config, changed)
@@ -255,10 +257,10 @@ def write_env(env_file: Path, config: WASTHConfig) -> Path:
     set_key(str(env_file), "WASTH_WORKS_DIR", str(config.works))
     set_key(str(env_file), "WASTH_VOCAB_DIR", str(config.vocab))
     rprint(f"[green]Configuração gravada em {env_file}:[/green]")
-    rprint(f"ORCiD: {WASTH_ORCID}")
-    rprint(f"Nome: {WASTH_PROFILE_NAME}")
-    rprint(f"Fichas de obras: {WASTH_WORKS_DIR}")
-    rprint(f"Vocabulário controlado: {WASTH_VOCAB_DIR}")
+    rprint(f"  Seu ORCiD:              {config.orcid}")
+    rprint(f"  Seu nome:               {config.profile_name}")
+    rprint(f"  Fichas de obras:        {config.works}")
+    rprint(f"  Vocabulário controlado: {config.vocab}")
     return env_file
 
 
@@ -325,7 +327,9 @@ pasta atual, com confirmação)."""),
         env_file = Path.cwd() / WASTH_ENV
     env_from_file = dotenv_values(env_file) if env_file.is_file() else {}
     orcid = parse_orcid(orcid) if orcid else env_from_file.get("WASTH_ORCID")
-    profile_name = orcid_profile_name(orcid) or env_from_file.get("WASTH_PROFILE_NAME")
+    profile_name = (
+        orcid_profile_name(orcid) if orcid else env_from_file.get("WASTH_PROFILE_NAME")
+    )
     works = works or env_from_file.get("WASTH_WORKS_DIR")
     vocab = vocab or env_from_file.get("WASTH_VOCAB_DIR")
 
@@ -344,7 +348,7 @@ pasta atual, com confirmação)."""),
 @app.command()
 def info(ctx: typer.Context) -> None:
     """Mostra a configuração em uso."""
-    c: Config = ctx.obj
+    c: WASTHConfig = ctx.obj
     rprint(f"Você: {c.profile_name} ({c.orcid})")
     rprint(f"Fichas:    {c.works}")
     rprint(f"Vocabulário controlado: {c.vocab}")
