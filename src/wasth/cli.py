@@ -61,7 +61,7 @@ class WASTHConfig:
 # --------------------------------------------------------------------------
 # ORCiD
 # --------------------------------------------------------------------------
-def orcid_profile_name(orcid: str | URIRef | None) -> str | None:
+def orcid_profile_name(orcid: str | URIRef) -> str | None:
     """Puxa o nome do usuário/utente a partir do número ORCiD informado.
 
     :param orcid: o número ORCiD do usuário.
@@ -69,8 +69,6 @@ def orcid_profile_name(orcid: str | URIRef | None) -> str | None:
     o número do ORCiD for inválido, ou se a API estiver inacessível.
     :rtype: str | None
     """
-    if not orcid:
-        orcid = typer.prompt("Por favor informe o seu número do ORCiD:")
     try:
         orcid_number = parse_orcid(orcid)
     except ValueError as e:
@@ -80,6 +78,36 @@ def orcid_profile_name(orcid: str | URIRef | None) -> str | None:
     except ValueError as e:
         raise typer.BadParameter(str(e)) from e
     return profile.full_name if profile else None
+
+
+def orcid_resolve(current: str | URIRef | None) -> tuple[str, str]:
+    """Consulta o ORCiD fornecido pelo usuário/utente.
+
+    :param current: ORCiD recebido pela função.
+    :returns: (orcid, full_name)
+    :rtype: tuple[str, str]
+    """
+    orcid = current
+    while True:
+        if not orcid:
+            orcid = typer.prompt("Informe seu número ou link do ORCiD")
+        if not parse_orcid(orcid):
+            rprint(f"[red]ORCiD inválido:[/red] {orcid}")
+            orcid = None
+            continue
+        orcid = parse_orcid(orcid)
+        profile_name = orcid_profile_name(orcid)
+        if profile_name is None:
+            rprint(
+                "[yellow]Não foi possível obter o perfil na API do ORCiD "
+                "(perfil inexistente, privado ou sem conexão).[/yellow]"
+            )
+            if typer.confirm("Usar este ORCiD mesmo assim?", default=False):
+                return orcid, orcid
+            orcid = None
+            continue
+        rprint(f"Olá, [bold green]{profile_name}[/bold green]! ({orcid})")
+        return orcid, profile_name
 
 
 @app.command()
@@ -169,7 +197,7 @@ def get_dir(label: str, workdir: str | None) -> Path:
 
 def setup_config(
     env_file: Path,
-    orcid: str | URIRef | None,
+    orcid: str | None,
     profile_name: str | None,
     works: str | None,
     vocab: str | None,
@@ -186,7 +214,10 @@ def setup_config(
     :rtype: tuple(WASTHConfig, bool)
     """
     rprint(f"[dim]Arquivo/ficheiro de configuração escolhido: {env_file}[/dim]")
-    if orcid and works and vocab:
+    values = [orcid, works, vocab]
+    all_set = all(values)
+
+    if all_set:
         rprint("[b]Configuração encontrada:[/b]")
         rprint(f"  ORCiD: {orcid}")
         rprint(f"  Nome: {profile_name}")
@@ -200,14 +231,14 @@ def setup_config(
             vocab = typer.prompt(
                 "Pasta contendo o vocabulário controlado", default=vocab
             )
+            all_set = False
 
-    profile_name = orcid_profile_name(orcid)
-    orcid_number = parse_orcid(orcid)
-    works_dir = get_dir(works)
-    vocab_dir = get_dir(vocab)
+    orcid_number, profile_name = orcid_resolve(orcid)
+    works_dir = get_dir("fichas de obras", works)
+    vocab_dir = get_dir("vocabulário controlado", vocab)
 
     config = WASTHConfig(orcid_number, profile_name, works_dir, vocab_dir)
-    changed = (
+    changed = not all_set or (
         orcid_number != orcid
         or str(works_dir) != str(Path(works).expanduser().resolve())
         or str(vocab_dir) != str(Path(vocab).expanduser().resolve())
@@ -228,6 +259,7 @@ def write_env(env_file: Path, config: WASTHConfig) -> Path:
     rprint(f"Nome: {WASTH_PROFILE_NAME}")
     rprint(f"Fichas de obras: {WASTH_WORKS_DIR}")
     rprint(f"Vocabulário controlado: {WASTH_VOCAB_DIR}")
+    return env_file
 
 
 # --------------------------------------------------------------------------
@@ -292,10 +324,8 @@ pasta atual, com confirmação)."""),
     if not env_file:
         env_file = Path.cwd() / WASTH_ENV
     env_from_file = dotenv_values(env_file) if env_file.is_file() else {}
-    orcid = parse_orcid(orcid) or env_from_file.get("WASTH_ORCID")
-    profile_name = (
-        orcid_profile_name(orcid) if orcid else env_from_file("WASTH_PROFILE_NAME")
-    )
+    orcid = parse_orcid(orcid) if orcid else env_from_file.get("WASTH_ORCID")
+    profile_name = orcid_profile_name(orcid) or env_from_file.get("WASTH_PROFILE_NAME")
     works = works or env_from_file.get("WASTH_WORKS_DIR")
     vocab = vocab or env_from_file.get("WASTH_VOCAB_DIR")
 
