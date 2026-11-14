@@ -63,6 +63,7 @@ def orcid_profile(
         },
         timeout=timeout,
         transport=transport,
+        follow_redirects=True,
     ) as client:
         response = client.get(f"{ORCID_BASE_URL}/{orcid}")
 

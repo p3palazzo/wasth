@@ -125,15 +125,16 @@ def get_dir(label: str, workdir: str | None) -> Path:
             value = typer.prompt(f"Informar a pasta contendo os arquivos de {label}:")
         dir = Path(value).expanduser().resolve()
         if not dir:
-            create = typer.confirm(f"Criar pasta {str(dir)}?")
+            create = typer.confirm(f"Criar pasta {str(dir)}?", default=True)
             if not create:
                 continue
             dir.mkdir(parents=True)
         if dir.is_dir():
-            rprint(f"pasta selecionada: {str(dir)}")
+            rprint(f":open_file_folder:  Pasta selecionada para {label}: {dir}\n")
             return dir
-        rprint(f"[red]Pasta não encontrada:[/red] {dir}")
+        rprint(f":question:  Pasta não encontrada: {dir}")
         value = None
+        continue
 
 
 def setup_config(
@@ -154,16 +155,24 @@ def setup_config(
     :return: Tuple com o objeto WASTHConfig e um bool notificando alteração.
     :rtype: tuple(WASTHConfig, bool)
     """
-    rprint(f"[dim]Arquivo/ficheiro de configuração escolhido: {env_file}[/dim]")
+    env_file = env_file.expanduser().resolve()
+    rprint(
+        f"[dim]:page_facing_up:  Arquivo/ficheiro de configuração escolhido: {env_file}[/dim]"
+    )
     values = [orcid, works, vocab]
     all_set = all(values)
 
     if all_set:
-        rprint("[b]Configuração encontrada:[/b]")
+        rprint("Configuração encontrada:")
         rprint(f"  Seu ORCiD:              {orcid}")
         rprint(f"  Seu nome:               {profile_name}")
-        rprint(f"  Fichas de obras:        {str(works)}")
-        rprint(f"  Vocabulário controlado: {str(vocab)}")
+        rprint(
+            f"  Fichas de obras:        {Path(works).expanduser().resolve() if works else f":no_entry_sign:"}"
+        )
+        rprint(
+            f"  Vocabulário controlado: {Path(vocab).expanduser().resolve() if vocab else f":no_entry_sign:"}"
+        )
+        print("\n")
         if confirm and not typer.confirm(
             "Prosseguir com os valores existentes?", default=True
         ):

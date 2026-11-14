@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 import typer
 
-from wasth.cli import WASTHConfig, main, setup_config
+from wasth.cli.configure import WASTHConfig, setup_config
 
 
 # -----------------------------------------------------------------------------
@@ -35,28 +35,24 @@ def valid_config(valid_orcid_no):
     return WASTHConfig(
         valid_orcid_no,
         "Pedro Paulo Palazzo",
-        Path("casa"),
-        Path("thesaurus"),
+        Path("testdata/casa").expanduser().resolve(),
+        Path("testdata/thesaurus").expanduser().resolve(),
     )
-
-
-@pytest.fixture
-def valid_env_payload(valid_orcid_no):
-    return {
-        env_file: Path("wasth.env"),
-        orcid: valid_orcid_no,
-        profile_name: "Pedro Paulo Palazzo",
-        works: "casa",
-        vocab: "thesaurus",
-        confirm: True,
-    }
 
 
 # -----------------------------------------------------------------------------
 # Test functions
 # -----------------------------------------------------------------------------
 def test_valid_config(
-    valid_env_payload: dict[str, str | Path | bool],
+    valid_orcid_no: str,
     valid_config: WASTHConfig,
 ) -> None:
-    assert setup_config(valid_env_payload) == (valid_config, False)
+    result = setup_config(
+        env_file=Path("wasth.env"),
+        orcid=valid_orcid_no,
+        profile_name="Pedro Paulo Palazzo",
+        works="testdata/casa",
+        vocab="testdata/thesaurus",
+        confirm=False,
+    )
+    assert result == (valid_config, False)
