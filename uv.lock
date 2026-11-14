@@ -83,34 +83,14 @@ wheels = [
 
 [[package]]
 name = "arqtrad-schema"
-source = { editable = "/Users/palazzo/src/github.com/arqtrad/schema" }
+version = "0.1.2.post1.dev0+388e229"
+source = { git = "https://github.com/arqtrad/schema#388e229c3102ea5cf10173b843ac6e8f86f373c2" }
 dependencies = [
     { name = "linkml" },
     { name = "linkml-map" },
     { name = "linkml-runtime" },
-    { name = "linkml-term-validator" },
     { name = "quantulum3", extra = ["classifier"] },
     { name = "schema-automator" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "linkml", specifier = ">=1.12.1" },
-    { name = "linkml-map", specifier = ">=0.5.4" },
-    { name = "linkml-runtime", specifier = ">=1.9.4" },
-    { name = "linkml-term-validator", specifier = ">=0.4.5" },
-    { name = "quantulum3", extras = ["classifier"], specifier = ">=0.10.0" },
-    { name = "schema-automator", specifier = ">=0.5.7" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "jupyter", specifier = ">=1.0.0" },
-    { name = "linkml", specifier = ">=1.9.3" },
-    { name = "mkdocs-material", specifier = ">=8.2.8" },
-    { name = "mkdocs-mermaid2-plugin", specifier = ">=1.1.1" },
-    { name = "mkdocs-pymdownx-material-extras", specifier = ">=2.5.6" },
-    { name = "mknotebooks", specifier = ">=0.8.0" },
 ]
 
 [[package]]
@@ -1519,25 +1499,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/66/0a/e24f036d3b896bcc76d6d219da4c61b01575707536cb53c7fc4b953e894d/linkml_runtime-1.12.1.tar.gz", hash = "sha256:6e46e94712ac6ab97baab9a0a1689c72e0035d8e3546c57abbf809760226ff9b", size = 607301, upload-time = "2026-10-13T14:02:47.782Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d1/f8/9436cf65da07cef4d24580d70d2a15f6dd35061eec373bb18bbdbd70f0be/linkml_runtime-1.12.1-py3-none-any.whl", hash = "sha256:6d3af40d94a795cc1026d7710880a3bac09b108e8f04da2b31c949b40f472e37", size = 707466, upload-time = "2026-10-13T14:02:44.603Z" },
-]
-
-[[package]]
-name = "linkml-term-validator"
-version = "0.4.5"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "filelock" },
-    { name = "linkml" },
-    { name = "linkml-runtime" },
-    { name = "oaklib" },
-    { name = "pydantic" },
-    { name = "requests" },
-    { name = "ruamel-yaml" },
-    { name = "typer" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/41/ac/19ab3468f16e71081ef087f981bd7505b9a6aeddffa0416cbc4ff0ffe99b/linkml_term_validator-0.4.5.tar.gz", hash = "sha256:4b16e465d35ec138a997ba833636236e5e9d8ce75609abc2680f5bdf8fa32509", size = 494885, upload-time = "2026-08-07T22:45:50.766Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/3f/fa/95501a67fa348745ac19cd65d24415545028c23865750c8c3ce0c517a6f6/linkml_term_validator-0.4.5-py3-none-any.whl", hash = "sha256:78902406d3584c9d068c17eafa52a8db651cdcbe1d6b89741b576fbeb1032375", size = 56618, upload-time = "2026-08-07T22:45:49.405Z" },
 ]
 
 [[package]]
@@ -4051,7 +4012,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "arqtrad-schema", editable = "/Users/palazzo/src/github.com/arqtrad/schema" },
+    { name = "arqtrad-schema", git = "https://github.com/arqtrad/schema" },
     { name = "defusedxml", specifier = ">=0.7.1" },
     { name = "geojson", specifier = ">=3.3.0" },
     { name = "geopandas", specifier = ">=1.1.3" },
