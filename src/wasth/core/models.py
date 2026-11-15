@@ -7,18 +7,21 @@ import frontmatter
 from rich import print as rprint
 from ruamel.yaml import YAML
 
-yaml = YAML(typ='safe')
+yaml = YAML(typ="rt")
+
 
 class InOutPaths(TypedDict):
     """Contém uma lista de arquivos/ficheiros de entrada e uma pasta de saída."""
+
     filelist: list[Path]
     output_path: Path
+
 
 def paths(
     in_path: Path | None = None,
     out_path: Path | None = None,
     overwrite: bool | None = None,
-    filetype: str = '.md'
+    filetype: str = ".md",
 ) -> InOutPaths:
     """Gera os nomes de arquivos de entrada e a pasta de saída a partir da
     entrada do usuário.
@@ -30,7 +33,7 @@ def paths(
     :rtype: InOutPaths
     """
     if not in_path:
-        raw = input(f"""
+        raw = input("""
 Informar um caminho de arquivo/ficheiro ou pasta de leitura.
 Por padrão será a pasta atual:
 
@@ -39,7 +42,9 @@ Por padrão será a pasta atual:
 
     if in_path.is_dir():
         filelist = [
-            p for p in in_path.iterdir() if p.is_file()
+            p
+            for p in in_path.iterdir()
+            if p.is_file()
             and p.suffix.casefold() == filetype.casefold()
             and p.stem != "README"
         ]
@@ -52,11 +57,11 @@ Por padrão será a pasta atual:
         in_path_dir = in_path.resolve().parent
     else:
         raise OSError(
-f"Nenhum documento no formato '{filetype}' encontrado em {in_path.resolve()}"
+            f"Nenhum documento no formato '{filetype}' encontrado em {in_path.resolve()}"
         )
 
     if not out_path:
-        raw = input(f"""
+        raw = input("""
 Informar um caminho de gravação.
 Por padrão será a mesma pasta ou arquivo/ficheiro de entrada:
 
@@ -64,13 +69,12 @@ Por padrão será a mesma pasta ou arquivo/ficheiro de entrada:
         out_path = Path(raw) if raw else in_path
 
     if out_path == (in_path or in_path_dir) and not overwrite:
-        ask_overwrite = input(
-            "⚠️  Sobrescrever se existente? s/n\n"
-        ).strip().casefold()
-        overwrite = ask_overwrite in { "s", "sim", "y", "yes", "sobrescrever" }
+        ask_overwrite = input("⚠️  Sobrescrever se existente? s/n\n").strip().casefold()
+        overwrite = ask_overwrite in {"s", "sim", "y", "yes", "sobrescrever"}
         if overwrite is False:
             raise ValueError("Operação cancelada pelo usuário.")
-    return { 'filelist': filelist, 'output_path': out_path}
+    return {"filelist": filelist, "output_path": out_path}
+
 
 def make_output_dir(output_dir: Path) -> Path:
     """Cria pasta de saída ou retorna erro."""
@@ -84,11 +88,8 @@ def make_output_dir(output_dir: Path) -> Path:
         raise OSError(f":x:  Erro na criação da pasta: {e}") from e
     return output_dir
 
-def write_file(
-        post: frontmatter.Post,
-        output_dir: Path,
-        filename: Path
-) -> Path | None:
+
+def write_file(post: frontmatter.Post, output_dir: Path, filename: Path) -> Path | None:
     """Grava cada arquivo/ficheiro conforme nome e pasta recebidos.
 
     :returns: Caminho onde o documento foi gravado, ou nada.

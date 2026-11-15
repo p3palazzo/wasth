@@ -105,16 +105,16 @@ def get_dir(label: str, workdir: str | None) -> Path:
     while True:
         if not value:
             value = typer.prompt(f"Informar a pasta contendo os arquivos de {label}")
-        dir = Path(value).expanduser().resolve()
-        if not dir:
-            create = typer.confirm(f"Criar pasta {str(dir)}?", default=True)
+        pasta = Path(value).expanduser().resolve()
+        if not pasta:
+            create = typer.confirm(f"Criar pasta {str(pasta)}?", default=True)
             if not create:
                 continue
-            dir.mkdir(parents=True)
-        if dir.is_dir():
-            rprint(f":open_file_folder:  Pasta selecionada para {label}: {dir}\n")
-            return dir
-        rprint(f":question:  Pasta não encontrada: {dir}")
+            pasta.mkdir(parents=True)
+        if pasta.is_dir():
+            rprint(f":open_file_folder:  Pasta selecionada para {label}: {pasta}\n")
+            return pasta
+        rprint(f":question:  Pasta não encontrada: {pasta}")
         value = None
         continue
 
@@ -149,10 +149,12 @@ def setup_config(
         rprint(f"  Seu ORCiD:              {orcid}")
         rprint(f"  Seu nome:               {profile_name}")
         rprint(
-            f"  Fichas de obras:        {Path(works).expanduser().resolve() if works else f":no_entry_sign:"}"
+            f"  Fichas de obras:        {Path(works).expanduser().resolve() \
+            if works else ":question:"}"
         )
         rprint(
-            f"  Vocabulário controlado: {Path(vocab).expanduser().resolve() if vocab else f":no_entry_sign:"}"
+            f"  Vocabulário controlado: {Path(vocab).expanduser().resolve() \
+            if vocab else ":question:"}"
         )
         print("\n")
         if confirm and not typer.confirm(
