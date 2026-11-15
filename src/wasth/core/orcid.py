@@ -54,7 +54,9 @@ def orcid_profile(
     timeout: float = DEFAULT_TIMEOUT,
     transport: httpx.BaseTransport | None = None,
 ) -> OrcidRecord | None:
-    """Retorna True se existir um registro ORCID público para o iD informado."""
+    """Retorna um objeto OrcidRecord se existir um registro ORCID público
+    para o iD informado.
+    """
 
     with httpx.Client(
         headers={

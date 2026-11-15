@@ -73,7 +73,7 @@ def orcid_profile_name(orcid: str | URIRef) -> str | None:
         profile = orcid_profile(orcid_number)
     except ValueError as e:
         raise typer.BadParameter(str(e)) from e
-    return profile.full_name if profile else None
+    return profile.display_name if profile else None
 
 
 def orcid_resolve(current: str | URIRef | None) -> tuple[str, str]:
