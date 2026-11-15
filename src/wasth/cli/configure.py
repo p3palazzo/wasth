@@ -104,7 +104,7 @@ def get_dir(label: str, workdir: str | None) -> Path:
     value = workdir
     while True:
         if not value:
-            value = typer.prompt(f"Informar a pasta contendo os arquivos de {label}:")
+            value = typer.prompt(f"Informar a pasta contendo os arquivos de {label}")
         dir = Path(value).expanduser().resolve()
         if not dir:
             create = typer.confirm(f"Criar pasta {str(dir)}?", default=True)
