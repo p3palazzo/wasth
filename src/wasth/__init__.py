@@ -5,4 +5,11 @@ utilitários de validação, normalização e georreferenciamento, além de
 utilitários para linha de comando e (futuramente) uma interface web.
 """
 
-__version__ = "0.6.0"
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("wasth")
+except PackageNotFoundError:
+    __version__ = "0.0.0"
+
+__all__ = ["__version__"]

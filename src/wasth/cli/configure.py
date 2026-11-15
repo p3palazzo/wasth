@@ -1,4 +1,4 @@
-"""Ponto de entrada do aplicativo `wasth`.
+"""Funções de configuração do aplicativo `wasth`.
 
 Configuração (ORCiD, pasta de Works, pasta de Concepts) é lida, em ordem
 de prioridade, de:
@@ -24,25 +24,7 @@ from wasth.core.orcid import orcid_profile, parse_orcid
 
 WASTH_ENV = "wasth.env"
 
-app = typer.Typer(
-    help=("""Interfaz de linha de comando da aplicação
-[b]WASTH: Web App para Sítios Tradicionais e Históricos[/b].
-
-Esta aplicação foi concebida para processar as fichas dos Documentários da
-Arquitetura Tradicional.
-O portal do projeto se encontra em <https://tradicional.arq.br>.
-A documentação da estrutura de dados pode ser consutada em
-<https://tradicional.arq.br/schema/>.
-
-Digite um dos [b]Commands[/b] abaixo para começar ou rode novamente o
-comando [b]wasth[/b] com uma ou mais dentre as [bold]Options[/bold] abaixo.
-
-Se usa o [b]WASTH[/b] pela primeira vez, comece por rodar o comando
-[r] wasth configure [/r]
-"""),
-    no_args_is_help=True,
-)
-
+app = typer.Typer()
 
 @dataclass
 class WASTHConfig:
