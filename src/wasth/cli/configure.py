@@ -235,7 +235,7 @@ pasta atual, com confirmação)."""),
         ),
     ] = None,
 ) -> None:
-    """Confirma, atualiza e grava as variáveis do usuário/utente.
+    """Mostra, confirma, atualiza e grava as variáveis do usuário/utente.
 
     :param orcid: Aceita o número do ORCiD, o link completo ou a CURIE na forma
     `orcid:1234-5678-9012-345X`.
@@ -269,12 +269,3 @@ pasta atual, com confirmação)."""),
         write_env(env_file, config)
 
     ctx.obj = config
-
-
-@app.command()
-def info(ctx: typer.Context) -> None:
-    """Mostra a configuração em uso."""
-    c: WASTHConfig = ctx.obj
-    rprint(f"Você: {c.profile_name} ({c.orcid})")
-    rprint(f"Fichas:    {c.works}")
-    rprint(f"Vocabulário controlado: {c.vocab}")
