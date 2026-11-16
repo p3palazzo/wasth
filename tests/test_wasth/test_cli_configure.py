@@ -33,15 +33,18 @@ def valid_config(valid_orcid_no, tmp_path: Path):
     """Exemplo de configuração válida."""
     works_dir = tmp_path / "casa"
     vocab_dir = tmp_path / "thesaurus"
+    dwg_dir = tmp_path / "desenho"
 
     works_dir.mkdir()
     vocab_dir.mkdir()
+    dwg_dir.mkdir()
 
     return WASTHConfig(
         valid_orcid_no,
         "Pedro Paulo Palazzo",
         works_dir.resolve(),
         vocab_dir.resolve(),
+        dwg_dir.resolve(),
     )
 
 
@@ -67,13 +70,15 @@ def test_valid_config(
 ) -> None:
     works = tmp_path / "casa"
     vocab = tmp_path / "thesaurus"
+    dwg = tmp_path / "desenho"
 
     result = setup_config(
         env_file=Path("wasth.env"),
         orcid=valid_orcid_no,
         profile_name="Pedro Paulo Palazzo",
-        works=str(works),
-        vocab=str(vocab),
+        works=works,
+        vocab=vocab,
+        dwg=dwg,
         confirm=False,
     )
     assert result == (valid_config, False)

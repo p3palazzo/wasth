@@ -26,6 +26,7 @@ WASTH_ENV = "wasth.env"
 
 app = typer.Typer()
 
+
 @dataclass
 class WASTHConfig:
     """Configuração da sessão, disponível em `ctx.obj`."""
@@ -34,6 +35,7 @@ class WASTHConfig:
     profile_name: str
     works: Path
     vocab: Path
+    dwg: Path
 
 
 # --------------------------------------------------------------------------
@@ -91,30 +93,30 @@ def orcid_resolve(current: str | URIRef | None) -> tuple[str, str]:
 # --------------------------------------------------------------------------
 # Helper functions
 # --------------------------------------------------------------------------
-def get_dir(label: str, workdir: str | None) -> Path:
+def get_dir(label: str, current: Path | None) -> Path:
     """Seleciona uma pasta existente, pedindo ao usuário se preciso.
 
     :param label: Rótulo que indica o propósito da pasta.
     :type label: str
-    :param workdir: Pasta atualmente selecionada.
-    :type workdir: str
+    :param current: Pasta atualmente selecionada.
+    :type current: str
     :return: Um caminho para a pasta selecionada.
     :rtype: pathlib.Path
     """
-    value = workdir
+    value = current
     while True:
-        if not value:
+        if not value or not Path(value).is_dir():
             value = typer.prompt(f"Informar a pasta contendo os arquivos de {label}")
-        pasta = Path(value).expanduser().resolve()
-        if not pasta:
-            create = typer.confirm(f"Criar pasta {str(pasta)}?", default=True)
+        new_dir = Path(value).expanduser().resolve()
+        if not new_dir:
+            create = typer.confirm(f"Criar pasta {new_dir}?", default=True)
             if not create:
                 continue
-            pasta.mkdir(parents=True)
-        if pasta.is_dir():
-            rprint(f":open_file_folder:  Pasta selecionada para {label}: {pasta}\n")
-            return pasta
-        rprint(f":question:  Pasta não encontrada: {pasta}")
+            new_dir.mkdir(parents=True)
+        if new_dir.is_dir():
+            rprint(f":open_file_folder:  Pasta selecionada para {label}: {new_dir}\n")
+            return new_dir
+        rprint(f":question:  Pasta não encontrada: {new_dir}")
         value = None
         continue
 
@@ -123,8 +125,9 @@ def setup_config(
     env_file: Path,
     orcid: str | None,
     profile_name: str | None,
-    works: str | None,
-    vocab: str | None,
+    works: Path | None,
+    vocab: Path | None,
+    dwg: Path | None,
     confirm: bool = True,
 ) -> tuple[WASTHConfig, bool]:
     """Processa a configuração e gera objeto WASTHConfig.
@@ -133,29 +136,29 @@ def setup_config(
     :param orcid: ORCiD do usuário/utente.
     :param works: Localização da pasta com as fichas de obras.
     :param vocab: Localização da pasta com o vocabulário controlado.
+    :param dwg: Localização da pasta com os desenhos técnicos.
     :param confirm: Indica se é preciso confirmar as alterações.
     :return: Tuple com o objeto WASTHConfig e um bool notificando alteração.
     :rtype: tuple(WASTHConfig, bool)
     """
     env_file = env_file.expanduser().resolve()
-    rprint(
-        f"[dim]:page_facing_up:  Arquivo/ficheiro de configuração escolhido: {env_file}[/dim]"
-    )
-    values = [orcid, works, vocab]
+    rprint(f"\
+           [dim]:page_facing_up:  Arquivo/ficheiro de configuração escolhido: \
+            {env_file}[/dim]\
+    ")
+    values = [orcid, works, vocab, dwg]
     all_set = all(values)
 
     if all_set:
         rprint("Configuração encontrada:")
         rprint(f"  Seu ORCiD:              {orcid}")
         rprint(f"  Seu nome:               {profile_name}")
-        rprint(
-            f"  Fichas de obras:        {Path(works).expanduser().resolve() \
-            if works else ":question:"}"
-        )
-        rprint(
-            f"  Vocabulário controlado: {Path(vocab).expanduser().resolve() \
-            if vocab else ":question:"}"
-        )
+        rprint(f"  Fichas de obras:        {works.expanduser().resolve() \
+            if works else ":question:"}")
+        rprint(f"  Vocabulário controlado: {vocab.expanduser().resolve() \
+            if vocab else ":question:"}")
+        rprint(f"  Desenhos técnicos:      {dwg.expanduser().resolve() \
+            if dwg else ":question:"}")
         print("\n")
         if confirm and not typer.confirm(
             "Prosseguir com os valores existentes?", default=True
@@ -165,19 +168,23 @@ def setup_config(
             vocab = typer.prompt(
                 "Pasta contendo o vocabulário controlado", default=vocab
             )
+            dwg = typer.prompt("Pasta contendo os desenhos técnicos", default=dwg)
             all_set = False
 
     orcid_number, profile_name = orcid_resolve(orcid)
     works_dir = get_dir("fichas de obras", works)
     vocab_dir = get_dir("vocabulário controlado", vocab)
-    old_works = str(Path(works).expanduser().resolve()) if works else None
-    old_vocab = str(Path(vocab).expanduser().resolve()) if vocab else None
+    dwg_dir = get_dir("vocabulário controlado", dwg)
+    old_works = str(works.expanduser().resolve()) if works else None
+    old_vocab = str(vocab.expanduser().resolve()) if vocab else None
+    old_dwg = str(dwg.expanduser().resolve()) if dwg else None
 
-    config = WASTHConfig(orcid_number, profile_name, works_dir, vocab_dir)
+    config = WASTHConfig(orcid_number, profile_name, works_dir, vocab_dir, dwg_dir)
     changed = not all_set or (
         orcid_number != orcid
         or str(works_dir) != old_works
         or str(vocab_dir) != old_vocab
+        or str(dwg_dir) != old_dwg
     )
 
     return (config, changed)
@@ -190,11 +197,13 @@ def write_env(env_file: Path, config: WASTHConfig) -> Path:
     set_key(str(env_file), "WASTH_PROFILE_NAME", config.profile_name)
     set_key(str(env_file), "WASTH_WORKS_DIR", str(config.works))
     set_key(str(env_file), "WASTH_VOCAB_DIR", str(config.vocab))
+    set_key(str(env_file), "WASTH_DWG_DIR", str(config.dwg))
     rprint(f"[green]Configuração gravada em {env_file}:[/green]")
     rprint(f"  Seu ORCiD:              {config.orcid}")
     rprint(f"  Seu nome:               {config.profile_name}")
     rprint(f"  Fichas de obras:        {config.works}")
     rprint(f"  Vocabulário controlado: {config.vocab}")
+    rprint(f"  Desenhos técnicos:      {config.dwg}")
     return env_file
 
 
@@ -209,18 +218,41 @@ def configure(
         typer.Option(envvar="WASTH_ORCID", help="Seu número do ORCiD."),
     ] = None,
     works: Annotated[
-        str | None,
+        Path | None,
         typer.Option(
             "--fichas",
             envvar="WASTH_WORKS_DIR",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            resolve_path=True,
             help="Pasta contento as fichas de obras em formato Markdown.",
         ),
     ] = None,
     vocab: Annotated[
-        str | None,
+        Path | None,
         typer.Option(
             envvar="WASTH_VOCAB_DIR",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            resolve_path=True,
             help="Pasta contento as fichas de vocabulário controlado em formato Markdown.",
+        ),
+    ] = None,
+    dwg: Annotated[
+        Path | None,
+        typer.Option(
+            "--desenhos",
+            envvar="WASTH_DWG_DIR",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+            resolve_path=True,
+            help="Pasta contendo os desenhos técnicos em formato DXF e SVG.",
         ),
     ] = None,
     env_file: Annotated[
@@ -228,6 +260,10 @@ def configure(
         typer.Option(
             "--env-file",
             exists=True,
+            file_okay=False,
+            resolve_path=True,
+            readable=True,
+            writable=True,
             dir_okay=False,
             help=("""Arquivo/ficheiro de configuração. Se indicado, a
 configuração completa é usada sem pedir confirmação (padrão: .wasth.env na
@@ -258,9 +294,10 @@ pasta atual, com confirmação)."""),
     )
     works = works or env_from_file.get("WASTH_WORKS_DIR")
     vocab = vocab or env_from_file.get("WASTH_VOCAB_DIR")
+    dwg = dwg or env_from_file.get("WASTH_DWG_DIR")
 
     config, changed = setup_config(
-        env_file, orcid, profile_name, works, vocab, confirm=not env_declared
+        env_file, orcid, profile_name, works, vocab, dwg, confirm=not env_declared
     )
 
     if changed and typer.confirm(
