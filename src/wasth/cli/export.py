@@ -94,11 +94,10 @@ def geojson(
                 georreferenciado.")
         )
     if collection:
-        (
+        if collection.errors():
             rprint(f"{collection.errors()}")
-            if collection.errors()
-            else rprint("[green]Nenhum erro detectado.[green]")
-        )
+        else:
+            rprint("[green]Nenhum erro detectado.[green]")
         if len(works) < len(collection["features"]):
             rprint(f"[yellow]{len(works) - len(collection["features"])} \
                 objetos sem georreferenciamento.[/yellow]")
@@ -118,7 +117,7 @@ def geojson(
         ):
             raise typer.Abort("Operação cancelada.")
         try:
-            with open(out_file, "w") as f:
+            with open(out_file, "w", encoding="utf-8") as f:
                 geoJSON.dump(collection, f, indent=2, ensure_ascii=False)
         except Exception as e:
             raise OSError(f"""

@@ -28,6 +28,8 @@ FilesPath = Annotated[
 
 # Precisamos de opções para outros tipos de dados (db, etc.)
 def markdown_filelist(files_path: Path | list[Path]) -> list[Path] | None:
+    """Retorna uma lista de fichas Markdown a partir do caminho fornecido."""
+
     def _is_markdown(file: Path) -> Path | None:
         if (
             not file.is_file()
@@ -49,7 +51,8 @@ def markdown_filelist(files_path: Path | list[Path]) -> list[Path] | None:
         if not _is_markdown(target):
             raise ValueError(f"{target.name} não é um documento Markdown válido.")
         return [target]
-    elif target.is_dir():
+
+    if target.is_dir():
         return sorted(file for file in target.iterdir() if _is_markdown(file)) or None
 
     raise ValueError(f"{target.name} não é um arquivo/ficheiro ou pasta.")

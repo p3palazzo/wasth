@@ -26,6 +26,8 @@ app = typer.Typer()
 # -----------------------------------------------------------------------------
 @dataclass
 class FileValidationResult:
+    """Objeto que descreve os erros de validação de um modelo."""
+
     file_path: Path
     is_valid: bool
     errors: list[ErrorDetails] = field(default_factory=list)

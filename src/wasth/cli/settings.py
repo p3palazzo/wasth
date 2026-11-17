@@ -1,3 +1,5 @@
+"""Informações de configuração da app WASTH."""
+
 import json
 from pathlib import Path
 from typing import Any

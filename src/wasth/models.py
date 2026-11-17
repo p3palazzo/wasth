@@ -32,13 +32,16 @@ CONCEPT_REF_FIELDS = ("broader", "narrower", "relation", "mapping")
 # -----------------------------------------------------------------------------
 def site_location(location: GeographicPoint | None) -> geojson.Point | None:
     """Ponto GeoJSON (lon, lat[, alt]) a partir das coordenadas."""
+
     if location is None:
         return None
     coords = (location.lon, location.lat)
     if location.alt is not None:
         coords += (location.alt,)
     p = geojson.Point(coords)
-    return p if p.is_valid else None
+    if p.is_valid:
+        return p
+    return None
 
 
 def site_extent(
@@ -124,7 +127,9 @@ class Thing(_Thing):
         return parse_orcid(value)
 
     @field_validator("record_date", mode="after")
+    @classmethod
     def validate_record_date(cls, value: datetime.date | None) -> datetime.date | None:
+        """Confirma que a data de criação da ficha não está no futuro."""
         today = datetime.date.today()
         if value is None:
             return today
