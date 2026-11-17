@@ -16,11 +16,12 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from dotenv import dotenv_values, set_key
 from rdflib import URIRef
 from rich import print as rprint
 
 from wasth.core.orcid import orcid_profile, parse_orcid
+
+from .settings import app_dir_config, load_settings, save_settings
 
 WASTH_ENV = "wasth.env"
 
@@ -31,11 +32,11 @@ app = typer.Typer()
 class WASTHConfig:
     """Configuração da sessão, disponível em `ctx.obj`."""
 
-    orcid: str
-    profile_name: str
-    works: Path
-    vocab: Path
-    dwg: Path
+    orcid: str | None = None
+    profile_name: str | None = None
+    works: Path | None = None
+    vocab: Path | None = None
+    dwg: Path | None = None
 
 
 # --------------------------------------------------------------------------
@@ -121,10 +122,62 @@ def get_dir(label: str, current: Path | None) -> Path:
         continue
 
 
-def setup_config(
-    env_file: Path,
+def setup_user(
     orcid: str | None,
     profile_name: str | None,
+    confirm: bool = True,
+) -> tuple[WASTHConfig, bool]:
+    """Processa a identidade do usuário/utente.
+
+    :param orcid: ORCiD do usuário/utente.
+    :param profile_name: Nome obtido pela consulta à API do ORCiD.
+    :param confirm: Indica se é preciso confirmar as alterações.
+    :return: O número ORCiD validado e o nome completo da pessoa.
+    :rtype: tuple[str, str, bool]
+    """
+    orcid_changed = False
+
+    orcid = parse_orcid(orcid) if orcid else None
+    if orcid:
+        rprint("Configuração encontrada:")
+        rprint(f"  Seu ORCiD:              {orcid}")
+        rprint(f"  Seu nome:               {profile_name}")
+        if confirm and not typer.confirm(
+            "Prosseguir com os valores existentes?", default=True
+        ):
+            orcid_input = typer.prompt("ORCiD", default=orcid)
+            if parse_orcid(orcid_input) != orcid:
+                orcid = parse_orcid(orcid_input)
+                orcid_changed = True
+    else:
+        print("Inicializando configuração de usuário[a]/utente.")
+        orcid_input = typer.prompt("Informe seu ORCiD")
+        orcid = parse_orcid(orcid_input)
+        orcid_changed = True
+
+    if not orcid:
+        rprint("[red]É obrigatório informar um ORCiD válido.[/red]")
+        raise typer.Abort()
+
+    if orcid_changed or not profile_name:
+        profile_name = orcid_profile_name(orcid)
+
+    if not profile_name:
+        rprint(
+            "[yellow]Não foi possível obter o perfil na API do ORCiD[/yellow] "
+            "(perfil inexistente, privado ou sem conexão)."
+        )
+        if typer.confirm("Usar este ORCiD mesmo assim?", default=False):
+            profile_name = orcid
+        else:
+            print("Operação cancelada.")
+            raise typer.Abort()
+
+    setup = WASTHConfig(orcid=orcid, profile_name=profile_name)
+    return (setup, orcid_changed)
+
+
+def setup_folders(
     works: Path | None,
     vocab: Path | None,
     dwg: Path | None,
@@ -132,8 +185,8 @@ def setup_config(
 ) -> tuple[WASTHConfig, bool]:
     """Processa a configuração e gera objeto WASTHConfig.
 
-    :param env_file: Localização do arquivo/ficheiro de configuração.
-    :param orcid: ORCiD do usuário/utente.
+    :param config_file: Localização do arquivo/ficheiro de configuração, por
+    padrão é config.json dentro de typer.get_app_dir(wasth).
     :param works: Localização da pasta com as fichas de obras.
     :param vocab: Localização da pasta com o vocabulário controlado.
     :param dwg: Localização da pasta com os desenhos técnicos.
@@ -141,18 +194,11 @@ def setup_config(
     :return: Tuple com o objeto WASTHConfig e um bool notificando alteração.
     :rtype: tuple(WASTHConfig, bool)
     """
-    env_file = env_file.expanduser().resolve()
-    rprint(f"\
-           [dim]:page_facing_up:  Arquivo/ficheiro de configuração escolhido: \
-            {env_file}[/dim]\
-    ")
-    values = [orcid, works, vocab, dwg]
+    values = [works, vocab, dwg]
     all_set = all(values)
 
     if all_set:
         rprint("Configuração encontrada:")
-        rprint(f"  Seu ORCiD:              {orcid}")
-        rprint(f"  Seu nome:               {profile_name}")
         rprint(f"  Fichas de obras:        {works.expanduser().resolve() \
             if works else ":question:"}")
         rprint(f"  Vocabulário controlado: {vocab.expanduser().resolve() \
@@ -163,7 +209,6 @@ def setup_config(
         if confirm and not typer.confirm(
             "Prosseguir com os valores existentes?", default=True
         ):
-            orcid = typer.prompt("ORCiD", default=orcid)
             works = typer.prompt("Pasta contendo as fichas", default=works)
             vocab = typer.prompt(
                 "Pasta contendo o vocabulário controlado", default=vocab
@@ -171,57 +216,89 @@ def setup_config(
             dwg = typer.prompt("Pasta contendo os desenhos técnicos", default=dwg)
             all_set = False
 
-    orcid_number, profile_name = orcid_resolve(orcid)
     works_dir = get_dir("fichas de obras", works)
     vocab_dir = get_dir("vocabulário controlado", vocab)
     dwg_dir = get_dir("vocabulário controlado", dwg)
-    old_works = str(works.expanduser().resolve()) if works else None
-    old_vocab = str(vocab.expanduser().resolve()) if vocab else None
-    old_dwg = str(dwg.expanduser().resolve()) if dwg else None
+    old_works = works.expanduser().resolve() if works else None
+    old_vocab = vocab.expanduser().resolve() if vocab else None
+    old_dwg = dwg.expanduser().resolve() if dwg else None
 
-    config = WASTHConfig(orcid_number, profile_name, works_dir, vocab_dir, dwg_dir)
     changed = not all_set or (
-        orcid_number != orcid
-        or str(works_dir) != old_works
-        or str(vocab_dir) != old_vocab
-        or str(dwg_dir) != old_dwg
+        works_dir != old_works or vocab_dir != old_vocab or dwg_dir != old_dwg
     )
 
-    return (config, changed)
-
-
-def write_env(env_file: Path, config: WASTHConfig) -> Path:
-    """Grava as configurações do usuário/utente."""
-    env_file.touch(exist_ok=True)
-    set_key(str(env_file), "WASTH_ORCID", config.orcid)
-    set_key(str(env_file), "WASTH_PROFILE_NAME", config.profile_name)
-    set_key(str(env_file), "WASTH_WORKS_DIR", str(config.works))
-    set_key(str(env_file), "WASTH_VOCAB_DIR", str(config.vocab))
-    set_key(str(env_file), "WASTH_DWG_DIR", str(config.dwg))
-    rprint(f"[green]Configuração gravada em {env_file}:[/green]")
-    rprint(f"  Seu ORCiD:              {config.orcid}")
-    rprint(f"  Seu nome:               {config.profile_name}")
-    rprint(f"  Fichas de obras:        {config.works}")
-    rprint(f"  Vocabulário controlado: {config.vocab}")
-    rprint(f"  Desenhos técnicos:      {config.dwg}")
-    return env_file
+    setup = WASTHConfig(
+        works=works_dir,
+        vocab=vocab_dir,
+        dwg=dwg_dir,
+    )
+    return (setup, changed)
 
 
 # --------------------------------------------------------------------------
-# Subcomandos
+# Comandos
 # --------------------------------------------------------------------------
 @app.command()
-def configure(
+def user(
     ctx: typer.Context,
+    config_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--config",
+            exists=True,
+            file_okay=False,
+            resolve_path=True,
+            readable=True,
+            writable=True,
+            dir_okay=False,
+            help="Arquivo/ficheiro de configuração existente ou a criar.",
+        ),
+    ] = None,
     orcid: Annotated[
         str | None,
-        typer.Option(envvar="WASTH_ORCID", help="Seu número do ORCiD."),
+        typer.Option(help="Seu número do ORCiD."),
     ] = None,
+) -> None:
+    """Informe o seu número do ORCiD ou um arquivo/ficheiro de configuração
+    existente para carregar sua identidade na app.
+
+    :param orcid: Aceita o número do ORCiD, o link completo ou a CURIE na forma
+    `orcid:1234-5678-9012-345X`.
+    :param config_file: Acionado pela opção `--config` na linha de comando,
+    aceita o caminho para um arquivo/ficheiro contendo todas as opções desta
+    função.
+    """
+    guided_setup = True
+    config_file = config_file or app_dir_config()
+    config_from_file = load_settings(config_file)
+    if not orcid and config_from_file.get("orcid") is not None:
+        guided_setup = False
+    orcid = orcid or config_from_file.get("orcid")
+    setup_config, changed_setup = setup_user(
+        orcid=orcid,
+        profile_name=config_from_file.get("profile_name"),
+        confirm=guided_setup,
+    )
+
+    if changed_setup and typer.confirm(
+        f"Grava as informações atualizadas em {config_file}?", default=True
+    ):
+        config_from_file["orcid"] = setup_config.orcid
+        config_from_file["profile_name"] = setup_config.profile_name
+        save_settings(config_from_file)
+        rprint("""Para configurar as pastas padrão, rodar o comando
+                  [b]wasth configure folders[/b]""")
+
+    ctx.obj = config_from_file
+
+
+@app.command()
+def folders(
+    ctx: typer.Context,
     works: Annotated[
         Path | None,
         typer.Option(
             "--fichas",
-            envvar="WASTH_WORKS_DIR",
             exists=True,
             file_okay=False,
             dir_okay=True,
@@ -233,7 +310,6 @@ def configure(
     vocab: Annotated[
         Path | None,
         typer.Option(
-            envvar="WASTH_VOCAB_DIR",
             exists=True,
             file_okay=False,
             dir_okay=True,
@@ -246,7 +322,6 @@ def configure(
         Path | None,
         typer.Option(
             "--desenhos",
-            envvar="WASTH_DWG_DIR",
             exists=True,
             file_okay=False,
             dir_okay=True,
@@ -255,54 +330,55 @@ def configure(
             help="Pasta contendo os desenhos técnicos em formato DXF e SVG.",
         ),
     ] = None,
-    env_file: Annotated[
+    config_file: Annotated[
         Path | None,
         typer.Option(
-            "--env-file",
+            "--config",
             exists=True,
             file_okay=False,
             resolve_path=True,
             readable=True,
             writable=True,
             dir_okay=False,
-            help=("""Arquivo/ficheiro de configuração. Se indicado, a
-configuração completa é usada sem pedir confirmação (padrão: .wasth.env na
-pasta atual, com confirmação)."""),
+            help="Arquivo/ficheiro de configuração.",
         ),
     ] = None,
 ) -> None:
-    """Mostra, confirma, atualiza e grava as variáveis do usuário/utente.
+    """Mostra, confirma, atualiza e grava as pastas padrão.
 
-    :param orcid: Aceita o número do ORCiD, o link completo ou a CURIE na forma
-    `orcid:1234-5678-9012-345X`.
     :param works: Acionado pela opção `--fichas` na linha de comando, aceita um
     nome de pasta contendo as fichas de obras em formato Markdown.
     Por padrão é `casa`.
     :param vocab: Aceita um nome de pasta contendo as fichas de vocabulário
     controlado. Por padrão é `thesaurus`.
-    :param env_file: Acionado pela opção `--env-file` na linha de comando,
-    aceita o caminho para um arquivo/ficheiro contendo todas as opções desta
-    função.
+    :param dwg: Aceita um nome de pasta contendo os desenhos técnicos do
+    projeto. Por padrão é `desenho`.
+    :param config_file: Acionado pela opção `--config` na linha de comando,
+    aceita o caminho para um arquivo/ficheiro contendo todas as opções desta função.
     """
-    env_declared = env_file is not None
-    if not env_file:
-        env_file = Path.cwd() / WASTH_ENV
-    env_from_file = dotenv_values(env_file) if env_file.is_file() else {}
-    orcid = parse_orcid(orcid) if orcid else env_from_file.get("WASTH_ORCID")
-    profile_name = (
-        orcid_profile_name(orcid) if orcid else env_from_file.get("WASTH_PROFILE_NAME")
-    )
-    works = works or env_from_file.get("WASTH_WORKS_DIR")
-    vocab = vocab or env_from_file.get("WASTH_VOCAB_DIR")
-    dwg = dwg or env_from_file.get("WASTH_DWG_DIR")
 
-    config, changed = setup_config(
-        env_file, orcid, profile_name, works, vocab, dwg, confirm=not env_declared
-    )
+    def _path_or_none(value: str | Path | None) -> Path | None:
+        return Path(value).expanduser().resolve() if value else None
 
-    if changed and typer.confirm(
-        f"Gravar configuração em {env_file.name}?", default=True
+    if config_file and not (works or vocab or dwg):
+        guided_setup = False
+    else:
+        config_file = app_dir_config()
+        guided_setup = True
+    config_from_file = load_settings(config_file)
+
+    works = works or _path_or_none(config_from_file.get("works"))
+    vocab = vocab or _path_or_none(config_from_file.get("vocab"))
+    dwg = dwg or _path_or_none(config_from_file.get("dwg"))
+
+    folder_setup, changed_setup = setup_folders(works, vocab, dwg, confirm=guided_setup)
+
+    if changed_setup and typer.confirm(
+        f"Gravar configuração em {config_file}?", default=True
     ):
-        write_env(env_file, config)
+        config_from_file["works"] = folder_setup.works
+        config_from_file["vocab"] = folder_setup.vocab
+        config_from_file["dwg"] = folder_setup.dwg
+        save_settings(config_from_file)
 
-    ctx.obj = config
+    ctx.obj = config_from_file

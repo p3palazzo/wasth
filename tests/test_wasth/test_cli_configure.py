@@ -4,7 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from wasth.cli.configure import WASTHConfig, orcid_resolve, setup_config
+from wasth.cli.configure import (
+    WASTHConfig,
+    orcid_profile_name,
+    setup_folders,
+    setup_user,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -49,13 +54,13 @@ def valid_config(valid_orcid_no, tmp_path: Path):
 
 
 @pytest.fixture
-def mock_orcid_resolve(monkeypatch, valid_orcid_no):
-    def fake_orcid_resolve(current):
+def mock_orcid_profile_name(monkeypatch, valid_orcid_no):
+    def fake_orcid_profile_name(current):
         return valid_orcid_no, "Pedro Paulo Palazzo"
 
     monkeypatch.setattr(
-        "wasth.cli.configure.orcid_resolve",
-        fake_orcid_resolve,
+        "wasth.cli.configure.orcid_profile_name",
+        fake_orcid_profile_name,
     )
 
 
@@ -66,19 +71,33 @@ def test_valid_config(
     valid_orcid_no: str,
     valid_config: WASTHConfig,
     tmp_path: Path,
-    mock_orcid_resolve,
+    mock_orcid_profile_name,
 ) -> None:
     works = tmp_path / "casa"
     vocab = tmp_path / "thesaurus"
     dwg = tmp_path / "desenho"
 
-    result = setup_config(
-        env_file=Path("wasth.env"),
+    user_setup, changed_user = setup_user(
         orcid=valid_orcid_no,
         profile_name="Pedro Paulo Palazzo",
+        confirm=False,
+    )
+
+    folder_setup, changed_folders = setup_folders(
         works=works,
         vocab=vocab,
         dwg=dwg,
         confirm=False,
     )
-    assert result == (valid_config, False)
+
+    result = WASTHConfig(
+        orcid=user_setup.orcid,
+        profile_name=user_setup.profile_name,
+        works=folder_setup.works,
+        vocab=folder_setup.vocab,
+        dwg=folder_setup.dwg,
+    )
+
+    assert result == valid_config
+    assert not changed_user
+    assert not changed_folders
