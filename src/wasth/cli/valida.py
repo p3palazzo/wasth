@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from jsonschema.benchmarks.const_vs_enum import invalid
 from pydantic import ValidationError
 from pydantic_core import ErrorDetails
 from rich import print as rprint
@@ -13,8 +12,9 @@ from rich.console import Console
 from rich.markup import escape
 from rich.progress import track
 
-from wasth.main import app, markdown_filelist
 from wasth.models import Concept, Thing, Work
+
+from ._common import markdown_filelist
 
 error_console = Console(stderr=True)
 

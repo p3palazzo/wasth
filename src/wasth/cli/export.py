@@ -3,12 +3,13 @@
 from pathlib import Path
 from typing import Annotated
 
-import geojson
+import geojson as geoJSON
 import typer
 from rich import print as rprint
 
-from wasth.main import app, markdown_filelist
 from wasth.models import Work
+
+from ._common import FilesPath, markdown_filelist
 
 app = typer.Typer()
 
@@ -16,24 +17,7 @@ app = typer.Typer()
 # -----------------------------------------------------------------------------
 # Helpers
 # -----------------------------------------------------------------------------
-FilesPath = Annotated[
-    Path,
-    typer.Option(
-        "--path",
-        exists=True,
-        dir_okay=True,
-        file_okay=True,
-        resolve_path=True,
-        readable=True,
-        help="Um caminho, absoluto ou relativo ao diretório atual, \
-        para um arquivo/ficheiro ou uma pasta contendo documentos \
-        a serem processados. Por padrão é o diretório informado nas \
-        configurações do projeto para as fichas de edificações.",
-    ),
-]
-
-
-def geojson_collection(works: list[Work]) -> geojson.FeatureCollection | None:
+def geojson_collection(works: list[Work]) -> geoJSON.FeatureCollection | None:
     """Gera uma coleção de objetos geoJSON a partir dos objetos ingeridos.
     Esta função pede os objetos já processados.
     Para passar uma pasta ou um arquivo/ficheiro, usar outra função antes.
@@ -46,9 +30,9 @@ def geojson_collection(works: list[Work]) -> geojson.FeatureCollection | None:
     features = []
     for work in works:
         location = work.site_location
-        if not isinstance(location, geojson.Point):
+        if not isinstance(location, geoJSON.Point):
             continue
-        feature = geojson.Feature(
+        feature = geoJSON.Feature(
             geometry=location,
             properties={
                 "title": work.title,
@@ -59,7 +43,7 @@ def geojson_collection(works: list[Work]) -> geojson.FeatureCollection | None:
             features.append(feature)
     if not features:
         return None
-    collection = geojson.FeatureCollection(features)
+    collection = geoJSON.FeatureCollection(features)
     return collection if collection.is_valid else None
 
 
@@ -67,7 +51,7 @@ def geojson_collection(works: list[Work]) -> geojson.FeatureCollection | None:
 # Comandos
 # -----------------------------------------------------------------------------
 @app.command()
-def to_geojson(
+def geojson(
     ctx: typer.Context,
     input_path: FilesPath | None,
     out_file: Annotated[
@@ -135,7 +119,7 @@ def to_geojson(
             raise typer.Abort("Operação cancelada.")
         try:
             with open(out_file, "w") as f:
-                geojson.dump(collection, f, indent=2, ensure_ascii=False)
+                geoJSON.dump(collection, f, indent=2, ensure_ascii=False)
         except Exception as e:
             raise OSError(f"""
     :x:  Erro na escrita em {out_file}:

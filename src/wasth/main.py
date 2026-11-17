@@ -21,32 +21,6 @@ app = typer.Typer()
 # -----------------------------------------------------------------------------
 
 
-# Precisamos de opções para outros tipos de dados (db, etc.)
-def markdown_filelist(files_path: Path) -> list[Path] | None:
-    def _is_markdown(file: Path) -> Path | None:
-        if (
-            not file.is_file()
-            or file.stem == "README"
-            or file.suffix.casefold() not in (".md", ".mkd", ".mkdn", ".markdown")
-            or not frontmatter.check(file)
-        ):
-            return None
-        return file
-
-    target = files_path.expanduser().resolve() if files_path else None
-    if not target:
-        raise FileNotFoundError(f"Caminho {files_path} não encontrado.")
-
-    if target.is_file():
-        if not _is_markdown(target):
-            raise ValueError(f"{target.name} não é um documento Markdown válido.")
-        return [target]
-    elif target.is_dir():
-        return sorted(file for file in target.iterdir() if _is_markdown(file)) or None
-
-    raise ValueError(f"{target.name} não é um arquivo/ficheiro ou pasta.")
-
-
 # -----------------------------------------------------------------------------
 # Comandos
 # -----------------------------------------------------------------------------
