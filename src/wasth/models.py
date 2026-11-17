@@ -174,9 +174,9 @@ class Work(Thing, _Work):
     def _validate_site_geometry(self):
         """Valida coordenadas da locação e da implantação."""
         for name, i, site in self._iter_sites():
-            if site_location(site.location) is None:
+            if site_location(site.location) is None and not self.former_site:
                 raise ValueError(f"Coordenadas inválidas em {name}[{i}].location")
-            if site_extent(site.extent) is None:
+            if site.extent and (site_extent(site.extent) is None):
                 raise ValueError(f"Geometria inválida em {name}[{i}].extent")
         return self
 
