@@ -50,6 +50,8 @@ FilesPath = Annotated[
 
 @dataclass
 class AppState:
+    """Reúne informações sobre a configuração da app durante a execução."""
+
     config_file: Path
     config: dict[str, Any]
     version: str = __version__

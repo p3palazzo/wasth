@@ -371,7 +371,7 @@ def show_config(
     if state.config_file and state.config_file.is_file():
         print(f"Configuração encontrada em {state.config_file}:")
     elif state.config:
-        print(f"Configuração encontrada no ambiente da aplicação:")
+        print("Configuração encontrada no ambiente da aplicação:")
     if state.config:
         rprint(
             f"  Seu ORCiD:                        [b]{state.config.get("orcid")}[/b]"

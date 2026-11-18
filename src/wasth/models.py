@@ -1,3 +1,5 @@
+"""Modelos derivados do arqtrad/schema/datamodel e validações adicionais."""
+
 import datetime
 import json
 from collections.abc import Iterator
