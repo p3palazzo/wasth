@@ -140,8 +140,8 @@ def setup_user(
     orcid = parse_orcid(orcid) if orcid else None
     if orcid:
         rprint("Configuração encontrada:")
-        rprint(f"  Seu ORCiD:              {orcid}")
-        rprint(f"  Seu nome:               {profile_name}")
+        rprint(f"  Seu ORCiD:                {orcid}")
+        rprint(f"  Seu nome:                 {profile_name}")
         if confirm and not typer.confirm(
             "Prosseguir com os valores existentes?", default=True
         ):
@@ -197,6 +197,11 @@ def setup_folders(
     values = [works, vocab, dwg]
     all_set = all(values)
 
+    rprint("Configuração encontrada:")
+    rprint(f"Fichas de obras:                  {works}")
+    rprint(f"Fichas de vocabulário controlado: {vocab}")
+    rprint(f"Desenhos técnicos:                {dwg}")
+
     if all_set:
         rprint("Configuração encontrada:")
         rprint(f"  Fichas de obras:        {works.expanduser().resolve() \
@@ -218,7 +223,7 @@ def setup_folders(
 
     works_dir = get_dir("fichas de obras", works)
     vocab_dir = get_dir("vocabulário controlado", vocab)
-    dwg_dir = get_dir("vocabulário controlado", dwg)
+    dwg_dir = get_dir("desenhos técnicos", dwg)
     old_works = works.expanduser().resolve() if works else None
     old_vocab = vocab.expanduser().resolve() if vocab else None
     old_dwg = dwg.expanduser().resolve() if dwg else None
@@ -376,9 +381,38 @@ def folders(
     if changed_setup and typer.confirm(
         f"Gravar configuração em {config_file}?", default=True
     ):
-        config_from_file["works"] = folder_setup.works
-        config_from_file["vocab"] = folder_setup.vocab
-        config_from_file["dwg"] = folder_setup.dwg
+        config_from_file["works"] = str(folder_setup.works)
+        config_from_file["vocab"] = str(folder_setup.vocab)
+        config_from_file["dwg"] = str(folder_setup.dwg)
         save_settings(config_from_file)
 
     ctx.obj = config_from_file
+
+
+@app.command()
+def show(
+    ctx: typer.Context,
+    config_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--config",
+            exists=True,
+            file_okay=False,
+            resolve_path=True,
+            readable=True,
+            writable=True,
+            dir_okay=False,
+            help="Arquivo/ficheiro de configuração.",
+        ),
+    ] = None,
+) -> None:
+    config = ctx.obj
+    rprint("Configuração encontrada:")
+    rprint(f"  Seu ORCiD:                        {config.get("orcid")}")
+    rprint(f"  Seu nome:                         {config.get("profile_name")}")
+    rprint(f"  Fichas de obras:                  {config.get("works")}")
+    rprint(f"  Fichas de vocabulário controlado: {config.get("vocab")}")
+    rprint(f"  Desenhos técnicos:                {config.get("dwg")}")
+    rprint("Para alterar, rode os comandos:")
+    rprint("  wasth configure user")
+    rprint("  wasth configure folders")
