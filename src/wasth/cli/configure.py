@@ -389,7 +389,7 @@ def folders(
     ctx.obj = config_from_file
 
 
-@app.command()
+@app.callback(invoke_without_command=True)
 def show(
     ctx: typer.Context,
     config_file: Annotated[
