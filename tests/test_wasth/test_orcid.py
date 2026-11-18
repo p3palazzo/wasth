@@ -54,6 +54,7 @@ def test_orcid_profile_with_real_fixture(valid_fixture: dict[str, object]) -> No
 
     record = orcid_profile(VALID_ORCID, transport=transport)
 
+    assert record
     assert record.orcid == VALID_ORCID
     assert record.given_names == "Pedro Paulo"
     assert record.family_name == "Palazzo"

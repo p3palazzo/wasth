@@ -21,9 +21,7 @@ from rich import print as rprint
 
 from wasth.core.orcid import orcid_profile, parse_orcid
 
-from .settings import app_dir_config, load_settings, save_settings
-
-WASTH_ENV = "wasth.env"
+from ._common import AppState, save_settings
 
 app = typer.Typer()
 
@@ -197,29 +195,15 @@ def setup_folders(
     values = [works, vocab, dwg]
     all_set = all(values)
 
-    rprint("Configuração encontrada:")
-    rprint(f"Fichas de obras:                  {works}")
-    rprint(f"Fichas de vocabulário controlado: {vocab}")
-    rprint(f"Desenhos técnicos:                {dwg}")
-
-    if all_set:
-        rprint("Configuração encontrada:")
-        rprint(f"  Fichas de obras:        {works.expanduser().resolve() \
-            if works else ":question:"}")
-        rprint(f"  Vocabulário controlado: {vocab.expanduser().resolve() \
-            if vocab else ":question:"}")
-        rprint(f"  Desenhos técnicos:      {dwg.expanduser().resolve() \
-            if dwg else ":question:"}")
-        print("\n")
-        if confirm and not typer.confirm(
-            "Prosseguir com os valores existentes?", default=True
-        ):
-            works = typer.prompt("Pasta contendo as fichas", default=works)
-            vocab = typer.prompt(
-                "Pasta contendo o vocabulário controlado", default=vocab
-            )
-            dwg = typer.prompt("Pasta contendo os desenhos técnicos", default=dwg)
-            all_set = False
+    if (
+        all_set
+        and confirm
+        and not typer.confirm("Prosseguir com os valores existentes?", default=True)
+    ):
+        works = typer.prompt("Pasta contendo as fichas", default=works)
+        vocab = typer.prompt("Pasta contendo o vocabulário controlado", default=vocab)
+        dwg = typer.prompt("Pasta contendo os desenhos técnicos", default=dwg)
+        all_set = False
 
     works_dir = get_dir("fichas de obras", works)
     vocab_dir = get_dir("vocabulário controlado", vocab)
@@ -246,19 +230,6 @@ def setup_folders(
 @app.command()
 def user(
     ctx: typer.Context,
-    config_file: Annotated[
-        Path | None,
-        typer.Option(
-            "--config",
-            exists=True,
-            file_okay=False,
-            resolve_path=True,
-            readable=True,
-            writable=True,
-            dir_okay=False,
-            help="Arquivo/ficheiro de configuração existente ou a criar.",
-        ),
-    ] = None,
     orcid: Annotated[
         str | None,
         typer.Option(help="Seu número do ORCiD."),
@@ -269,32 +240,44 @@ def user(
 
     :param orcid: Aceita o número do ORCiD, o link completo ou a CURIE na forma
     `orcid:1234-5678-9012-345X`.
-    :param config_file: Acionado pela opção `--config` na linha de comando,
-    aceita o caminho para um arquivo/ficheiro contendo todas as opções desta
-    função.
     """
     guided_setup = True
-    config_file = config_file or app_dir_config()
-    config_from_file = load_settings(config_file)
-    if not orcid and config_from_file.get("orcid") is not None:
+    state: AppState = ctx.obj
+    if not orcid and state.config.get("orcid") is not None:
         guided_setup = False
-    orcid = orcid or config_from_file.get("orcid")
+    orcid = orcid or state.config.get("orcid")
     setup_config, changed_setup = setup_user(
         orcid=orcid,
-        profile_name=config_from_file.get("profile_name"),
+        profile_name=state.config.get("profile_name"),
         confirm=guided_setup,
     )
 
-    if changed_setup and typer.confirm(
-        f"Grava as informações atualizadas em {config_file}?", default=True
-    ):
-        config_from_file["orcid"] = setup_config.orcid
-        config_from_file["profile_name"] = setup_config.profile_name
-        save_settings(config_from_file)
-        rprint("""Para configurar as pastas padrão, rodar o comando
-                  [b]wasth configure folders[/b]""")
+    if changed_setup:
+        print(f"Olá, {setup_config.profile_name or "<nome indisponível>"}!")
+        if not setup_config.profile_name:
+            print(
+                "Se o seu nome estiver incorreto ou ausente, verifique o número "
+                "do ORCiD ou as mensagens de erro."
+            )
+        if typer.confirm(
+            f"Grava as informações atualizadas em {state.config_file}?", default=True
+        ):
+            state.config["orcid"] = setup_config.orcid
+            state.config["profile_name"] = setup_config.profile_name
+            save_settings(state)
 
-    ctx.obj = config_from_file
+    else:
+        rprint(
+            "\nNão houve alteração nas configurações. "
+            "Caso deseje alterar a sua identidade, rodar novamente o comando com "
+            "a opção:\n"
+            "[b]wasth [--config-file PATH] configure user --orcid SEU_ORCID"
+        )
+
+    rprint(
+        "\nPara configurar as pastas padrão, rodar o comando "
+        "[b]wasth configure folders[/b]"
+    )
 
 
 @app.command()
@@ -335,84 +318,79 @@ def folders(
             help="Pasta contendo os desenhos técnicos em formato DXF e SVG.",
         ),
     ] = None,
-    config_file: Annotated[
-        Path | None,
-        typer.Option(
-            "--config",
-            exists=True,
-            file_okay=False,
-            resolve_path=True,
-            readable=True,
-            writable=True,
-            dir_okay=False,
-            help="Arquivo/ficheiro de configuração.",
-        ),
-    ] = None,
 ) -> None:
-    """Mostra, confirma, atualiza e grava as pastas padrão.
-
-    :param works: Acionado pela opção `--fichas` na linha de comando, aceita um
-    nome de pasta contendo as fichas de obras em formato Markdown.
-    Por padrão é `casa`.
-    :param vocab: Aceita um nome de pasta contendo as fichas de vocabulário
-    controlado. Por padrão é `thesaurus`.
-    :param dwg: Aceita um nome de pasta contendo os desenhos técnicos do
-    projeto. Por padrão é `desenho`.
-    :param config_file: Acionado pela opção `--config` na linha de comando,
-    aceita o caminho para um arquivo/ficheiro contendo todas as opções desta função.
-    """
+    """Mostra, confirma, atualiza e grava as pastas padrão."""
 
     def _path_or_none(value: str | Path | None) -> Path | None:
         return Path(value).expanduser().resolve() if value else None
 
-    if config_file and not (works or vocab or dwg):
+    state: AppState = ctx.obj
+    if state.config and not (works or vocab or dwg):
         guided_setup = False
     else:
-        config_file = app_dir_config()
         guided_setup = True
-    config_from_file = load_settings(config_file)
 
-    works = works or _path_or_none(config_from_file.get("works"))
-    vocab = vocab or _path_or_none(config_from_file.get("vocab"))
-    dwg = dwg or _path_or_none(config_from_file.get("dwg"))
+    works = works or _path_or_none(state.config.get("works"))
+    vocab = vocab or _path_or_none(state.config.get("vocab"))
+    dwg = dwg or _path_or_none(state.config.get("dwg"))
 
     folder_setup, changed_setup = setup_folders(works, vocab, dwg, confirm=guided_setup)
 
     if changed_setup and typer.confirm(
-        f"Gravar configuração em {config_file}?", default=True
+        f"Gravar configuração em {state.config}?", default=True
     ):
-        config_from_file["works"] = str(folder_setup.works)
-        config_from_file["vocab"] = str(folder_setup.vocab)
-        config_from_file["dwg"] = str(folder_setup.dwg)
-        save_settings(config_from_file)
-
-    ctx.obj = config_from_file
+        state.config["works"] = str(folder_setup.works)
+        state.config["vocab"] = str(folder_setup.vocab)
+        state.config["dwg"] = str(folder_setup.dwg)
+        save_settings(state)
+    elif not changed_setup:
+        rprint(
+            "\nNão houve alteração nas configurações."
+            "Caso deseje alterar as pastas, rodar novamente o comando com "
+            "as opções desejadas dentre as listadas em:\n"
+            "[b]wasth [--config-file PATH] configure folders --help[/b]"
+        )
+    rprint(
+        "Para configurar a sua identidade de usuário/utente, rodar o comando "
+        "[b]wasth configure user[/b]"
+    )
 
 
 @app.callback(invoke_without_command=True)
-def show(
+def show_config(
     ctx: typer.Context,
-    config_file: Annotated[
-        Path | None,
-        typer.Option(
-            "--config",
-            exists=True,
-            file_okay=False,
-            resolve_path=True,
-            readable=True,
-            writable=True,
-            dir_okay=False,
-            help="Arquivo/ficheiro de configuração.",
-        ),
-    ] = None,
 ) -> None:
-    config = ctx.obj
-    rprint("Configuração encontrada:")
-    rprint(f"  Seu ORCiD:                        {config.get("orcid")}")
-    rprint(f"  Seu nome:                         {config.get("profile_name")}")
-    rprint(f"  Fichas de obras:                  {config.get("works")}")
-    rprint(f"  Fichas de vocabulário controlado: {config.get("vocab")}")
-    rprint(f"  Desenhos técnicos:                {config.get("dwg")}")
-    rprint("Para alterar, rode os comandos:")
-    rprint("  wasth configure user")
-    rprint("  wasth configure folders")
+    """Comandos de configuração da app WASTH.
+
+    A configuração é gravada numa pasta padrão conforme o seu sistema operacional,
+    ou no arquivo/ficheiro informado com [b]wasth --config-file PATH configure[/b].
+
+    A opção [b]--help[/b] pode ser usada em qualquer subcomando para obter
+    instruções mais detalhadas."""
+    state: AppState = ctx.obj
+    if state.config_file and state.config_file.is_file():
+        print(f"Configuração encontrada em {state.config_file}:")
+    elif state.config:
+        print(f"Configuração encontrada no ambiente da aplicação:")
+    if state.config:
+        rprint(
+            f"  Seu ORCiD:                        [b]{state.config.get("orcid")}[/b]"
+        )
+        rprint(
+            f"  Seu nome:                         [b]{state.config.get("profile_name")}[/b]"
+        )
+        rprint(
+            f"  Fichas de obras:                  [b]{state.config.get("works")}[/b]"
+        )
+        rprint(
+            f"  Fichas de vocabulário controlado: [b]{state.config.get("vocab")}[/b]"
+        )
+        rprint(f"  Desenhos técnicos:                [b]{state.config.get("dwg")}[/b]")
+    else:
+        rprint("[yellow]Nenhuma configuração encontrada.[/yellow]")
+    if ctx.invoked_subcommand is not None:
+        return
+    rprint("Para instruções de configuração, rode os comandos:")
+    rprint("  wasth configure --help")
+    rprint("  wasth configure user --help")
+    rprint("  wasth configure folders --help")
