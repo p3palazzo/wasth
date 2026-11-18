@@ -1,4 +1,5 @@
 import datetime
+import json
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Self
@@ -50,14 +51,19 @@ def site_extent(
     """Polígono(s) de implantação a partir das coordenadas."""
     if extent is None:
         return None
-    coords = extent.coordinates
+    try:
+        coords = json.loads(extent.coordinates)
+    except (json.JSONDecodeError, TypeError) as e:
+        raise ValueError(
+            f"Coordenadas mal conformadas em geometry_type={extent.geometry_type!r}: {e}"
+        ) from e
     match extent.geometry_type:
         case "Polygon":
             footprint = geojson.Polygon(coords)
         case "MultiPolygon":
             footprint = geojson.MultiPolygon(coords)
         case _:
-            footprint = geojson.Polygon(coords)
+            raise ValueError(f"Tipo de geometria inválido: {extent.geometry_type!r}")
     return footprint if footprint.is_valid else None
 
 
@@ -160,15 +166,8 @@ class Work(Thing, _Work):
                 yield name, i, site
 
     def olc_id(self) -> str | None:
-        """
-        Processa entradas de georreferenciamento
-
-        :param self: Aceita a propriedade site_location do objeto Work
-        :returns: Gera ID no formato Open Location Code a partir da latitude e
-        longitude inseridas na ficha ou na interface.
-        :rtype: str
-        """
-        loc = self.site_location
+        """Processa locação para gerar id no formato Open Location Code."""
+        loc = self.site.location
         if not loc:
             return None
         if loc.lat is None or loc.lon is None:

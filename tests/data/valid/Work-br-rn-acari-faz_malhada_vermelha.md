@@ -1,7 +1,7 @@
 ---
 title: Fazenda Malhada Vermelha
 title_type: owner
-id: 684VRX8H+G8H
+id: 6955G96W+VFJ
 record_date: &RECORD_DATE "2024-05-02"
 author: "orcid:0009-0006-7479-6365"
 
@@ -60,7 +60,7 @@ site:
       id: "doi:10.14459/2025MP1782307"
   extent:
     geometry_type: "Polygon"
-    coordinates: >-
+    coordinates: >-  # O caractere ">" indica que o conteúdo começa na linha seguinte, indentado em dois espaços. O caractere "-" faz o sistema desconsiderar as quebras de linha dentro do campo.
       [[
         [-36.6038005698465,-6.48776522907464],
         [-36.603847673529,-6.487727420037561],
