@@ -5,16 +5,16 @@ O módulo só depende dos atributos `id`, `broader`, `relation`, `mapping`,
 `models.ref_id`), de modo que funciona igualmente com fichas lidas de
 arquivos, de um banco de dados ou de qualquer outro suporte.
 """
-from __future__ import annotations
-
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
+from typing import Annotated
 
 from arqtrad_schema.datamodel.arqtrad_schema_pydantic import \
     NarrowerConceptReference
 from pydantic import ValidationError
+from rdflib import Graph
 
 from wasth.models import Concept, ref_id
 
