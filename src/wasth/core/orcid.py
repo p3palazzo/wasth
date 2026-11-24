@@ -7,8 +7,6 @@ Só são retornados dados que o titular marcou como públicos; qualquer campo
 pode, portanto, vir vazio (``None`` ou lista vazia).
 """
 
-from __future__ import annotations
-
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pyorcid_checksum import ORCID_Checksum
@@ -16,10 +14,10 @@ from rdflib import URIRef
 
 ORCID_BASE_URL = "https://orcid.org"
 USER_AGENT = "WASTH/0.6.0 (mailto:doc.mod@unb.br)"
-DEFAULT_TIMEOUT = 10.0  # segundos
+DEFAULT_TIMEOUT = 5.0  # segundos
 
 ORCID_CHECKER = ORCID_Checksum()
-ORCID_PREFIXES = ("orcid:", "https://orcid.org/", "http://orcid.org/")
+ORCID_PREFIXES = ("orcid:", ORCID_BASE_URL, "http://orcid.org/")
 
 
 # --------------------------------------------------------------------------

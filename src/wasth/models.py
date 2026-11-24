@@ -21,6 +21,7 @@ from pydantic import field_validator, model_validator
 from rdflib import URIRef
 from ruamel.yaml import YAML
 
+from .core.curie import expand_all_curies, schema_view
 from .core.orcid import parse_orcid
 
 yaml = YAML(typ="rt")
@@ -115,12 +116,25 @@ class Thing(_Thing):
 
         :param post: Um objeto já processado a partir de um documento Markdown com frontmatter YAML.
         :type post: frontmatter.Post
-        :return: Um objeto em forma de dicionário que pode ser convertido, no todo ou em parte, para vários outros tipos de objetos ou reexportado para Markdown.
+        :return: Um objeto que pode ser convertido, no todo ou em parte, para vários outros tipos
+        de objetos ou reexportado para Markdown.
         :rtype: Thing
         """
         data = post.metadata.copy()
+        if not data:
+            raise ValueError("Nenhum dado encontrado neste objeto.")
         data["content"] = post.content
-        return cls.model_validate(data)
+
+        linkml_class = cls.__name__
+
+        if linkml_class not in schema_view().all_classes():
+            raise ValueError(
+                f"A classe de objetos {cls.__name__!r} não foi encontrada no esquema de dados."
+            )
+
+        expanded_data = expand_all_curies(data, linkml_class)
+
+        return cls.model_validate(expanded_data)
 
     @field_validator("author", "authors", mode="before")
     @classmethod
@@ -281,4 +295,26 @@ class Concept(Thing, _Concept):
             raise ValueError(
                 f"Conceitos em `broader` e `relation` ao mesmo tempo: {sorted(overlap)}"
             )
+
+        broader_preferred_count = 0
+        if self.broader:
+            for ref in self.broader:
+                if ref.broader_preferred == True:
+                    broader_preferred_count += 1
+                    if broader_preferred_count > 1:
+                        raise ValueError(
+                            "Não é permitido ter mais de uma relação com `broader_preferred: true`."
+                        )
+            if broader_preferred_count == 0:
+                raise ValueError(
+                    "É obrigatório informar uma relação com `broader_preferred: true`."
+                )
+
+        if not self.broader and self.concept_type != "facet":
+            raise ValueError(
+                "Todos os conceitos que não são nomes de facetas devem ter um ancestral."
+            )
+
+        if self.broader and self.concept_type == "facet":
+            raise ValueError("Uma faceta não pode ter ancestrais.")
         return self

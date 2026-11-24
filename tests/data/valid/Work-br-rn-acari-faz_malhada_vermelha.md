@@ -14,7 +14,7 @@ description: >
   salas para os quartos, sem corredores.
 
 bibliographic_citation:
-  - refid: "@feijo:2002arquitetura"
+  - citekey: "@feijo:2002arquitetura"
     note: "p. 85–88"
 
 identifiers:
@@ -47,8 +47,7 @@ site:
     Fazenda Malhada Vermelha
 
     Acari
-  name:
-    geonameid: 3408360
+  name: "geonames:3408360"
   location:
     lat: -6.487795049446586
     lon: -36.60386321586019
@@ -88,7 +87,7 @@ temporal:
       - date_type: estimated
         date_value: "1899-12-31"
     bibliographic_citation:
-      - refid: "@feijo:2002arquitetura"
+      - citekey: "@feijo:2002arquitetura"
         note: "p. 16"
   - event_type: "modification_activity"
     title: "Substituição dos esteios em madeira por pilares de alvenaria"
@@ -99,7 +98,7 @@ temporal:
       - date_type: estimated
         date_value: "1999-12-31"
     bibliographic_citation:
-      - refid: "@feijo:2002arquitetura"
+      - citekey: "@feijo:2002arquitetura"
         note: "p. 85"
   - event_type: "addition"
     title: "Construção dos contrafortes em alvenaria nas paredes laterais"
@@ -110,7 +109,7 @@ temporal:
       - date_type: estimated
         date_value: "1999-12-31"
     bibliographic_citation:
-      - refid: "@feijo:2002arquitetura"
+      - citekey: "@feijo:2002arquitetura"
         note: "p. 85"
   - event_type: "addition"
     title: Construção de um depósito no alpendre
@@ -121,7 +120,7 @@ temporal:
       - date_type: estimated
         date_value: "1999-12-31"
     bibliographic_citation:
-      - refid: "@feijo:2002arquitetura"
+      - citekey: "@feijo:2002arquitetura"
         note: "p. 85"
   - event_type: "condition_assessment"
     title: "Inventário da arquitetura rural na microrregião do Seridó"
@@ -136,7 +135,7 @@ temporal:
       > expressivo delas, aparentemente, foi adotado o mesmo partido
       > arquitetônico. [@feijo:2002arquitetura, 1]
     bibliographic_citation:
-      - refid: "@feijo:2002arquitetura"
+      - citekey: "@feijo:2002arquitetura"
         note: "p. 1"
   - event_type: "condition_assessment"
     start_date:
