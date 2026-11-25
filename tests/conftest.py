@@ -11,11 +11,25 @@ def valid_dir() -> Path:
 
 
 @pytest.fixture
+def invalid_dir() -> Path:
+    return HERE / "data" / "invalid"
+
+
+@pytest.fixture
 def valid_works(valid_dir):
     return [f for f in valid_dir.iterdir() if f.stem.startswith("Work")]
 
 
 @pytest.fixture
-def invalid_works():
-    invalid_dir = HERE / "data" / "invalid"
+def invalid_works(invalid_dir):
     return [f for f in invalid_dir.iterdir() if f.stem.startswith("Work")]
+
+
+@pytest.fixture
+def valid_concepts(valid_dir):
+    return [f for f in valid_dir.iterdir() if f.stem.startswith("Concept")]
+
+
+@pytest.fixture
+def invalid_concepts(invalid_dir):
+    return [f for f in invalid_dir.iterdir() if f.stem.startswith("Concept")]

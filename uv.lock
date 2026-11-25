@@ -74,8 +74,8 @@ wheels = [
 
 [[package]]
 name = "arqtrad-schema"
-version = "0.3.5"
-source = { git = "https://github.com/arqtrad/schema#d152f212d3c5c7a86f4eeb1a397fb172fd5d00b9" }
+version = "0.3.6.post3.dev0+bd21a1a"
+source = { git = "https://github.com/arqtrad/schema#bd21a1a9b23b6b3e0087fc1f45211588fc9a40b8" }
 dependencies = [
     { name = "linkml" },
     { name = "linkml-map" },
@@ -504,7 +504,7 @@ wheels = [
 
 [[package]]
 name = "datamodel-code-generator"
-version = "0.101.0"
+version = "0.102.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "argcomplete" },
@@ -517,9 +517,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f9/2b/cc045afaf22e1046f11d5c667766613c13d5ff2b6805899c882bb52f3d27/datamodel_code_generator-0.101.0.tar.gz", hash = "sha256:5f1dbfb185f2ae7a1f236983ddcff98203bd0b32bf625fcc3a85ae8202516249", size = 13006476, upload-time = "2026-11-24T01:41:26.222Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/91/61/f4be137edf3b7237c4a96553fa5cf27121373750daf8f2a9605db7a3ab6c/datamodel_code_generator-0.102.0.tar.gz", hash = "sha256:d8eee2c54d1bc35d6313dc872f5024c61bc0200078cd6eb41b532f18f8895612", size = 13177175, upload-time = "2026-11-25T00:45:18.206Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bd/d9/db620b448bf4a1b1263e9f261e33bb0a11a61586dd33f055c23a3f2420bc/datamodel_code_generator-0.101.0-py3-none-any.whl", hash = "sha256:257b4682a3c55491b8f56cb89a004d1906954d39e9e87c6be438969d86ff914c", size = 2597902, upload-time = "2026-11-24T01:41:23.967Z" },
+    { url = "https://files.pythonhosted.org/packages/c8/f4/372168159af2ea65492e571b6f280431f2b0be2eebb32ed96d943c1e4ebb/datamodel_code_generator-0.102.0-py3-none-any.whl", hash = "sha256:d6b7fad258ba81d30fbef689feb16587033d07c225cef3d94c8fc6164af7e828", size = 2611183, upload-time = "2026-11-25T00:45:16.17Z" },
 ]
 
 [[package]]

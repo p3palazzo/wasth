@@ -231,12 +231,6 @@ class Concept(Thing, _Concept):
     """Modelo dos conceitos do vocabulário controlado."""
 
     @classmethod
-    def from_post(cls, post):
-        if post.metadata.get("narrower"):
-            raise ValueError("`narrower` é derivado de `broader`; não preencher.")
-        return super().from_post(post)
-
-    @classmethod
     def from_file(cls, f: Path):
         post = frontmatter.load(f)
         if not post.metadata.get("id"):
@@ -317,4 +311,12 @@ class Concept(Thing, _Concept):
 
         if self.broader and self.concept_type == "facet":
             raise ValueError("Uma faceta não pode ter ancestrais.")
+
+        if self.mapping:
+            for concept in self.mapping:
+                if concept.refid_type and concept.refid_type == "local":
+                    raise ValueError(
+                        "Um conceito só pode ser mapeado a conceitos de outros vocabulários.\n"
+                        f"Foi atribuído o tipo {concept.refid_type} a {concept.refid}."
+                    )
         return self

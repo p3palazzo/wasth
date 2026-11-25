@@ -1,19 +1,26 @@
-from pathlib import Path
+"""Construção de um vocabulário a partir de várias fichas de Concept ao mesmo tempo.
+
+O módulo só depende dos atributos `id`, `broader`, `relation`, `mapping`,
+`narrower`, `bibliographic_citation` e `title` dos conceitos (e de
+`models.ref_id`), de modo que funciona igualmente com fichas lidas de
+arquivos, de um banco de dados ou de qualquer outro suporte.
+"""
+
+from functools import cache
 
 from arqtrad_schema.datamodel.arqtrad_schema_pydantic import (
     SkosBroaderRelation,
     SkosMappingRelation,
-    SkosNarrowerRelation,
 )
-from linkml_runtime import SchemaView
 from rdflib import Graph, Literal, Namespace, URIRef
+from rdflib.namespace import RDF, SKOS
+
+from wasth.models import Concept
 
 from .curie import expand_curie
 
-SKOS = Namespace("http://www.w3.org/2004/02/skos/core#")
 ISO = Namespace("http://purl.org/iso25964/skos-thes#")
-
-ARQTRAD = "https://vocabulario.tradicional.arq.br/w/"
+VASCON = Namespace("https://vocabulario.tradicional.arq.br/w/")
 
 BROADER_PREDICATES = {
     SkosBroaderRelation.broader: SKOS.broader,
@@ -31,7 +38,11 @@ MAPPING_PREDICATES = {
 }
 
 
+# --------------------------------------------------------------------------------------------------
+# Funções auxiliares
+# --------------------------------------------------------------------------------------------------
 def narrower_predicate(broader_predicate: URIRef) -> URIRef:
+    """Gera as categorias de descendentes a partir das categorias de ancestrais."""
     if broader_predicate == SKOS.broader:
         return SKOS.narrower
 
@@ -41,16 +52,83 @@ def narrower_predicate(broader_predicate: URIRef) -> URIRef:
     return URIRef(f"{ISO}{narrower_name}")
 
 
-def local_to_uri(local_id: str) -> URIRef:
-    if local_id.startswith("arqtrad:") or local_id.startswith(ARQTRAD):
-        return expand_curie(local_id)
-    return URIRef(f"{ARQTRAD}{local_id}/")
+@cache
+def local_concept_uri(local_id: str) -> URIRef:
+    """Obtém uma URI do Vocabulário de Arquitetura e Sistemas Construtivos Tradicionais a partir
+    de um identificador local.
+
+    :param local_id: Texto do identificador local.
+    :return: URI completa para o objeto.
+    :rtype: RDFLib.URIRef
+    """
+    if ":" in local_id:
+        return URIRef(expand_curie(local_id))
+    return URIRef(f"{str(VASCON)}{local_id}/")
 
 
-def reference_id(reference) -> str:
-    target = reference.concept_name
+def reference_id(reference) -> URIRef:
+    """Resolve a URI completa de uma referência inserida nas fichas."""
+    target = reference.refid
+    id_type = reference.id_type or "uri"
 
-    if isinstance(target, str):
-        return target
+    match id_type:
+        case "local":
+            return local_concept_uri(target)
+        case "uri" | "iri":
+            return URIRef(expand_curie(target))
+        case _:
+            raise ValueError(
+                f"{reference.refid_type!r} não é um tipo de referência válido."
+            )
 
-    return target.id
+
+# --------------------------------------------------------------------------------------------------
+# Construção do grafo
+# --------------------------------------------------------------------------------------------------
+def add_concept(graph: Graph, concept: Concept) -> None:
+    """Insere os triplos de um conceito no grafo."""
+    subject = local_concept_uri(concept.id)
+
+    graph.add((subject, RDF.type, SKOS.Concept))
+    graph.add((subject, SKOS.prefLabel, Literal(concept.title, lang="pt")))
+
+    if concept.content:
+        graph.add((subject, SKOS.scopeNote, Literal(concept.content, lang="pt")))
+
+    if concept.description:
+        graph.add((subject, SKOS.definition, Literal(concept.description, lang="pt")))
+
+    for reference in concept.broader or []:
+        parent = reference_id(reference)
+        broader = BROADER_PREDICATES[reference.broader_match]
+        narrower = narrower_predicate(broader)
+
+        graph.add((subject, broader, parent))
+        graph.add((parent, narrower, subject))
+
+        if reference.broader_preferred:
+            graph.add((subject, ISO.broaderPreferred, parent))
+
+    for reference in concept.relation or []:
+        related = reference_id(reference)
+
+        graph.add((subject, SKOS.related, related))
+
+    for reference in concept.mapping or []:
+        external = reference_id(reference)
+
+        graph.add((subject, MAPPING_PREDICATES[reference.mapping_match], external))
+
+
+def build_vocabulary_graph(concepts: list[Concept]) -> Graph:
+    """Inicializa o grafo preenchendo-o com a lista de conceitos recebida."""
+    graph = Graph()
+
+    graph.bind("vascon", VASCON)
+    graph.bind("skos", SKOS)
+    graph.bind("iso", ISO)
+
+    for concept in concepts:
+        add_concept(graph, concept)
+
+    return graph
