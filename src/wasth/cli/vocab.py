@@ -16,9 +16,13 @@ from ._common import AppState, get_app_dir, markdown_filelist
 app = typer.Typer()
 
 
-def dump_vocabulary_graph(graph: Graph, save_path: Path, s_format: str | None) -> Path:
+def dump_vocabulary_graph(
+    graph: Graph,
+    save_path: Path,
+    s_format: str | None,
+) -> Path:
     """Grava o grafo do vocabulário num arquivo/ficheiro."""
-    if format:
+    if s_format:
         graph.serialize(destination=save_path, format=s_format)
     else:
         graph.serialize(destination=save_path)
@@ -39,7 +43,9 @@ def build(
             file_okay=False,
             readable=True,
             resolve_path=True,
-            help="Pasta contendo as fichas do vocabulário controlado em formato Markdown.",
+            help=(
+"Pasta contendo as fichas do vocabulário controlado em formato Markdown."
+            ),
         ),
     ] = None,
     dest: Annotated[
@@ -108,10 +114,12 @@ def show_vocab(
     config_source = Path(state.config["vocab"])
 
     if config_source.is_dir():
-        rprint(f"Pasta configurada para o vocabulário controlado: {config_source}")
+        rprint(
+            f"Pasta configurada para o vocabulário controlado: {config_source}"
+        )
     else:
         rprint(
-            "Para saber como configurar as pastas padrão, envie [b]wasth configure[/b]"
+"Para saber como configurar as pastas padrão, envie [b]wasth configure[/b]"
         )
     rprint("Envie [b]wasth vocab --help[/b] para ver os comandos disponíveis.")
 
