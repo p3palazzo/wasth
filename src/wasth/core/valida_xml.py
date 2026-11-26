@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 
 import xmlschema
-from rich import print
+from rich import print as rprint
 
 
 def create_schema(
@@ -23,7 +23,7 @@ def create_schema(
         # validação do OpenGML:
         # https://github.com/sissaschool/xmlschema/issues/425
         xml_profile = xmlschema.XMLSchema11(
-            "https://lido-schema.org/profiles/v1.1/lido-v1.1-profile-architecture-v1.1.xsd"
+"https://lido-schema.org/profiles/v1.1/lido-v1.1-profile-architecture-v1.1.xsd"
         )
         xml_profile.export(target=os.path.dirname(abs_path), save_remote=True)
         return xml_profile
@@ -41,11 +41,11 @@ def valid_xml(
     if not doc_path or not doc_path.is_file():
         doc_path = Path(input("Informar um caminho de arquivo/ficheiro."))
         if not doc_path or not doc_path.is_file():
-            print(f":x:  {str(doc_path)} não é um caminho válido, cancelando.")
+            rprint(f":x:  {str(doc_path)} não é um caminho válido, cancelando.")
             return None
     document = doc_path.read_text(encoding=encoding)
     if xml_profile.is_valid(document):
-        print(f":white_check_mark: O documento '{str(doc_path)}' é válido.")
+        rprint(f":white_check_mark: O documento '{str(doc_path)}' é válido.")
     else:
         xml_profile.validate(document)
     return xml_profile.is_valid(document)
