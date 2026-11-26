@@ -65,9 +65,13 @@ APP_NAME = "wasth"
 DEFAULT_CONFIG = "config.json"
 
 
+def get_app_dir() -> Path:
+    return Path(typer.get_app_dir(APP_NAME))
+
+
 def app_dir_config(config_file_name: str | None = None) -> Path:
     """Return the WASTH user configuration file path."""
-    app_dir = Path(typer.get_app_dir(APP_NAME))
+    app_dir = get_app_dir()
     app_dir.mkdir(parents=True, exist_ok=True)
     if not config_file_name:
         config_file_name = DEFAULT_CONFIG

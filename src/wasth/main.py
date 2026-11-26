@@ -9,6 +9,7 @@ from .cli._common import AppState, ConfigFile, app_dir_config, load_settings
 from .cli.configure import app as configure_app
 from .cli.export import app as export_app
 from .cli.valida import app as valida_app
+from .cli.vocab import app as vocab_app
 
 app = typer.Typer()
 
@@ -57,6 +58,7 @@ def entrypoint(
 app.add_typer(configure_app, name="configure")
 app.add_typer(valida_app)
 app.add_typer(export_app, name="export")
+app.add_typer(vocab_app, name="vocab")
 
 if __name__ == "__main__":
     app()

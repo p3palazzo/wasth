@@ -11,16 +11,31 @@ from functools import cache
 from arqtrad_schema.datamodel.arqtrad_schema_pydantic import (
     SkosBroaderRelation,
     SkosMappingRelation,
+    linkml_meta,
 )
 from rdflib import Graph, Literal, Namespace, URIRef
 from rdflib.namespace import RDF, SKOS
+from rich import print as rprint
 
 from wasth.models import Concept
 
 from .curie import expand_curie
 
-ISO = Namespace("http://purl.org/iso25964/skos-thes#")
-VASCON = Namespace("https://vocabulario.tradicional.arq.br/w/")
+
+# --------------------------------------------------------------------------------------------------
+# Funções auxiliares
+# --------------------------------------------------------------------------------------------------
+def schema_namespaces() -> dict[str, Namespace]:
+    prefixes = linkml_meta["prefixes"]
+    return {
+        p["prefix_prefix"]: Namespace(p["prefix_reference"]) for p in prefixes.values()
+    }
+
+
+namespaces = schema_namespaces()
+
+VASCON = namespaces["arqtrad"]
+ISO = namespaces["iso"]
 
 BROADER_PREDICATES = {
     SkosBroaderRelation.broader: SKOS.broader,
@@ -38,9 +53,6 @@ MAPPING_PREDICATES = {
 }
 
 
-# --------------------------------------------------------------------------------------------------
-# Funções auxiliares
-# --------------------------------------------------------------------------------------------------
 def narrower_predicate(broader_predicate: URIRef) -> URIRef:
     """Gera as categorias de descendentes a partir das categorias de ancestrais."""
     if broader_predicate == SKOS.broader:
@@ -69,7 +81,7 @@ def local_concept_uri(local_id: str) -> URIRef:
 def reference_id(reference) -> URIRef:
     """Resolve a URI completa de uma referência inserida nas fichas."""
     target = reference.refid
-    id_type = reference.id_type or "uri"
+    id_type = reference.refid_type or "uri"
 
     match id_type:
         case "local":
@@ -128,7 +140,12 @@ def build_vocabulary_graph(concepts: list[Concept]) -> Graph:
     graph.bind("skos", SKOS)
     graph.bind("iso", ISO)
 
+    count = 1
     for concept in concepts:
         add_concept(graph, concept)
+        rprint(
+            f"{count}. [b]{concept.title}[/b] [dim]({concept.concept_type})[/dim] adicionado ao grafo."
+        )
+        count += 1
 
     return graph

@@ -337,7 +337,7 @@ def folders(
     folder_setup, changed_setup = setup_folders(works, vocab, dwg, confirm=guided_setup)
 
     if changed_setup and typer.confirm(
-        f"Gravar configuração em {state.config}?", default=True
+        f"Gravar configuração em {state.config_file}?", default=True
     ):
         state.config["works"] = str(folder_setup.works)
         state.config["vocab"] = str(folder_setup.vocab)

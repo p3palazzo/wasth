@@ -28,7 +28,7 @@ yaml = YAML(typ="rt")
 
 
 SITE_FIELDS = ("site", "former_site", "intended_site", "other_site")
-CONCEPT_REF_FIELDS = ("broader", "narrower", "relation", "mapping")
+CONCEPT_REF_FIELDS = ("broader", "relation", "mapping")
 
 
 # -----------------------------------------------------------------------------
@@ -76,8 +76,7 @@ def ref_id(ref) -> str | None:
     Aceita tanto `concept_name` como objeto Concept (esquema atual, `inlined:
     true`) quanto como string (se o esquema passar a `inlined: false`).
     """
-    target = ref.concept_name
-    return target if isinstance(target, str) else getattr(target, "id", None)
+    return ref if isinstance(ref, str) else getattr(ref, "refid", None)
 
 
 # -----------------------------------------------------------------------------
@@ -232,13 +231,13 @@ class Concept(Thing, _Concept):
 
     @classmethod
     def from_file(cls, f: Path):
-        post = frontmatter.load(f)
+        post = frontmatter.load(str(f))
         if not post.metadata.get("id"):
-            post.metadata["id"] = Path(f).stem
+            post.metadata["id"] = f.stem
         return cls.from_post(post)
 
     def iter_references(self):
-        """Percorre (campo, índice, referência) em broader/narrower/relation/mapping."""
+        """Percorre (campo, índice, referência) em broader/relation/mapping."""
         for name in CONCEPT_REF_FIELDS:
             for i, ref in enumerate(getattr(self, name) or []):
                 yield name, i, ref
@@ -250,23 +249,6 @@ class Concept(Thing, _Concept):
     @property
     def relation_ids(self) -> set[str | None]:
         return {ref_id(r) for r in self.relation or [] if ref_id(r)}
-
-    @model_validator(mode="before")
-    @classmethod
-    def _stubs_from_ids(cls, data):
-        if not isinstance(data, dict):
-            return data
-        data = dict(data)
-        for name in ("broader", "narrower", "relation", "mapping"):
-            data[name] = [
-                (
-                    {**r, "concept_name": {"id": r["concept_name"]}}
-                    if isinstance(r, dict) and isinstance(r.get("concept_name"), str)
-                    else r
-                )
-                for r in data.get(name) or []
-            ] or data.get(name)
-        return data
 
     @model_validator(mode="after")
     def _validate_concept(self):

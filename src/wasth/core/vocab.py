@@ -5,61 +5,48 @@ O módulo só depende dos atributos `id`, `broader`, `relation`, `mapping`,
 `models.ref_id`), de modo que funciona igualmente com fichas lidas de
 arquivos, de um banco de dados ou de qualquer outro suporte.
 """
-from collections.abc import Iterable
-from dataclasses import dataclass, field
-from graphlib import CycleError, TopologicalSorter
-from pathlib import Path
-from typing import Annotated
 
-from arqtrad_schema.datamodel.arqtrad_schema_pydantic import \
-    NarrowerConceptReference
-from pydantic import ValidationError
+from dataclasses import dataclass
+from graphlib import CycleError, TopologicalSorter
+from typing import Self
+
 from rdflib import Graph
 
 from wasth.models import Concept, ref_id
 
+from .rdf_namespace import build_vocabulary_graph
 
+
+# --------------------------------------------------------------------------------------------------
+# Modelo do vocabulário
+# --------------------------------------------------------------------------------------------------
 @dataclass
 class Vocabulary:
-    concepts: dict[str, Concept] = field(default_factory=dict)
-    load_errors: list[tuple[str, str]] = field(default_factory=list)
-
-    # ------------------------------------------------------------ loading
-    @classmethod
-    def from_concepts(cls, concepts: Iterable[Concept]) -> "Vocabulary":
-        vocab = cls()
-        for c in concepts:
-            if c.id in vocab.concepts:
-                vocab.load_errors.append((c.id, "`id` duplicado."))
-            else:
-                vocab.concepts[c.id] = c
-        return vocab
+    concepts: dict[str, Concept]
+    graph: Graph
+    load_errors: list[tuple[str, str]]
 
     @classmethod
-    def from_directory(cls, root: Path, pattern: str = "**/*.md") -> "Vocabulary":
-        """Carrega todas as fichas; erros de validação são coletados, não lançados."""
-        vocab = cls()
-        for path in sorted(Path(root).glob(pattern)):
-            try:
-                c = Concept.from_file(path)
-            except (ValidationError, ValueError) as exc:
-                vocab.load_errors.append((str(path), str(exc)))
-                continue
-            if c.id in vocab.concepts:
-                vocab.load_errors.append((str(path), f"`id` duplicado: {c.id!r}."))
+    def from_concepts(cls, models: list[Concept]) -> Self:
+        concepts: dict = {}
+        load_errors = []
+        for concept in models:
+            if concepts.get(concept.id):
+                load_errors.append((concept.id, "`id` duplicado."))
             else:
-                vocab.concepts[c.id] = c
-        return vocab
+                concepts[concept.id] = concept
+        graph = build_vocabulary_graph(models)
+        return cls(concepts=concepts, graph=graph, load_errors=load_errors)
 
     # -------------------------------------------------------------- graph
-    def _broader_graph(self) -> dict[str, set[str]]:
+    def _broader_graph(self) -> dict[str, set[str | None]]:
         return {cid: set(c.broader_ids) for cid, c in self.concepts.items()}
 
     def ancestors(self, cid: str) -> set[str]:
         graph, seen, stack = self._broader_graph(), set(), [cid]
         while stack:
             for parent in graph.get(stack.pop(), ()):
-                if parent not in seen:
+                if parent and parent not in seen:
                     seen.add(parent)
                     stack.append(parent)
         return seen
@@ -80,7 +67,9 @@ class Vocabulary:
             for name, i, ref in c.iter_references():
                 target = ref_id(ref)
                 if name != "mapping" and target not in self.concepts:
-                    problems.append(f"{cid}: {name}[{i}] aponta para {target!r}, que não existe.")
+                    problems.append(
+                        f"{cid}: {name}[{i}] aponta para {target!r}, que não existe."
+                    )
 
         # Ciclos em broader.
         try:
@@ -120,8 +109,6 @@ class Vocabulary:
                 if parent in self.concepts:
                     children.setdefault(parent, []).append(
                         NarrowerConceptReference(
-                            # Esquema atual: concept_name é um Concept embutido.
-                            # Se virar `inlined: false`, passar `child.id`.
                             narrower_match=ref.broader_match,  # enums idênticos
                             concept_name=child,
                         )
