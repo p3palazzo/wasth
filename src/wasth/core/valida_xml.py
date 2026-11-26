@@ -11,12 +11,10 @@ from pathlib import Path
 import xmlschema
 from rich import print
 
-from wasth.core import models
-
 
 def create_schema(
-    schema_path: str = "data/xml/lido-v1.1-profile-architecture-v1.1.xsd"
-) -> xmlschema.XMLSchema11 | None :
+    schema_path: str = "data/xml/lido-v1.1-profile-architecture-v1.1.xsd",
+) -> xmlschema.XMLSchema11:
     """Mostra problemas de estrutura dos dados"""
     root_dir = Path(__file__).resolve().parent.parent
     abs_path = os.path.join(root_dir, schema_path)
@@ -25,7 +23,7 @@ def create_schema(
         # validação do OpenGML:
         # https://github.com/sissaschool/xmlschema/issues/425
         xml_profile = xmlschema.XMLSchema11(
-"https://lido-schema.org/profiles/v1.1/lido-v1.1-profile-architecture-v1.1.xsd"
+            "https://lido-schema.org/profiles/v1.1/lido-v1.1-profile-architecture-v1.1.xsd"
         )
         xml_profile.export(target=os.path.dirname(abs_path), save_remote=True)
         return xml_profile
@@ -33,10 +31,11 @@ def create_schema(
     return xml_profile
     # type: <class 'xmlschema.validators.schemas.XMLSchema11'>
 
+
 def valid_xml(
     doc_path: Path | None = None,
     xml_profile: xmlschema.validators.schemas.XMLSchema11 = create_schema(),
-    encoding: str = 'utf-8'
+    encoding: str = "utf-8",
 ) -> bool | None:
     """Valida um arquivo XML contra especificação XSD"""
     if not doc_path or not doc_path.is_file():
@@ -44,33 +43,9 @@ def valid_xml(
         if not doc_path or not doc_path.is_file():
             print(f":x:  {str(doc_path)} não é um caminho válido, cancelando.")
             return None
-    xml_profile = create_schema()
     document = doc_path.read_text(encoding=encoding)
     if xml_profile.is_valid(document):
         print(f":white_check_mark: O documento '{str(doc_path)}' é válido.")
     else:
         xml_profile.validate(document)
     return xml_profile.is_valid(document)
-
-def main(
-    args: models.InOutPaths | None = None,
-    ignore_output_dir: bool = True,
-    encoding: str = 'utf-8'
-) -> bool | None:
-    """Realiza validação de esquema XML numa lista de documentos."""
-    args = models.paths(overwrite=ignore_output_dir)
-    if not args:
-        return None
-    files = args['filelist']
-    for f in files:
-        try:
-            valid_xml(f, encoding=encoding)
-            return True
-        except Exception as e:
-            raise OSError(f"""
--------------------------------------------------------------------------------
-:prohibited: Não foi possível ler {str(f)}: {e}
-                """) from e
-
-if __name__ == "__main__":
-    raise SystemExit(main())

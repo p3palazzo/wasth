@@ -10,11 +10,12 @@ from dataclasses import dataclass
 from graphlib import CycleError, TopologicalSorter
 from typing import Self
 
+from arqtrad_schema.datamodel.arqtrad_schema_pydantic import NarrowerConceptReference
 from rdflib import Graph
 
 from wasth.models import Concept, ref_id
 
-from .rdf_namespace import build_vocabulary_graph
+from .rdf_tools import build_vocabulary_graph
 
 
 # --------------------------------------------------------------------------------------------------
@@ -82,9 +83,9 @@ class Vocabulary:
             # SKOS S27: related não pode ligar um conceito a seu ancestral/descendente.
             for other in c.relation_ids & self.concepts.keys():
                 if other in self.ancestors(cid) or cid in self.ancestors(other):
-                    problems.append(
-                        f"{cid}: `relation` com {other!r}, que é ancestral/descendente (viola SKOS S27)."
-                    )
+                    problems.append(f"""
+                    {cid}: `relation` com {other!r}, que é ancestral/descendente (viola SKOS S27).
+                    """)
                 # skos:related é simétrica.
                 elif cid not in self.concepts[other].relation_ids:
                     problems.append(f"{cid}: `relation` com {other!r} não é recíproca.")
@@ -110,7 +111,7 @@ class Vocabulary:
                     children.setdefault(parent, []).append(
                         NarrowerConceptReference(
                             narrower_match=ref.broader_match,  # enums idênticos
-                            concept_name=child,
+                            refid=child.id,
                         )
                     )
         return {

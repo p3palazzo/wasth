@@ -64,3 +64,4 @@ cache-keys = [
 [tool.uv.sources]
 pyorcid-checksum = { git = "https://github.com/arqtrad/PyORCID-checker" }
 arqtrad_schema = { git = "https://github.com/arqtrad/schema" }
+# arqtrad_schema = { path = "/Users/palazzo/src/github.com/arqtrad/schema", editable = true }

@@ -275,7 +275,7 @@ class Concept(Thing, _Concept):
         broader_preferred_count = 0
         if self.broader:
             for ref in self.broader:
-                if ref.broader_preferred == True:
+                if ref.broader_preferred:
                     broader_preferred_count += 1
                     if broader_preferred_count > 1:
                         raise ValueError(

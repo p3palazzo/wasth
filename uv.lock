@@ -74,8 +74,8 @@ wheels = [
 
 [[package]]
 name = "arqtrad-schema"
-version = "0.3.6.post3.dev0+bd21a1a"
-source = { git = "https://github.com/arqtrad/schema#bd21a1a9b23b6b3e0087fc1f45211588fc9a40b8" }
+version = "0.3.6.post4.dev0+5e04d25"
+source = { git = "https://github.com/arqtrad/schema#5e04d252619903305f7685c50be95554663a0cc2" }
 dependencies = [
     { name = "linkml" },
     { name = "linkml-map" },

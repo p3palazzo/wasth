@@ -4,8 +4,9 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from rdflib import Graph, URIRef
+from rdflib import Graph
 from rich import print as rprint
+from rich.progress import track
 
 from wasth.core.vocab import Vocabulary
 from wasth.models import Concept
@@ -69,7 +70,7 @@ def build(
     if not files:
         raise typer.Abort(f"Nenhuma ficha válida encontrada em {source_dir}.")
 
-    concepts = [Concept.from_file(file) for file in files]
+    concepts = [Concept.from_file(file) for file in track(files)]
     vocabulary = Vocabulary.from_concepts(concepts)
 
     vocab_check = vocabulary.check()
@@ -110,3 +111,7 @@ def show_vocab(
             "Para saber como configurar as pastas padrão, envie [b]wasth configure[/b]"
         )
     rprint("Envie [b]wasth vocab --help[/b] para ver os comandos disponíveis.")
+
+
+if __name__ == "__main__":
+    app()

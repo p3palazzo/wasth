@@ -34,7 +34,7 @@ def schema_namespaces() -> dict[str, Namespace]:
 
 namespaces = schema_namespaces()
 
-VASCON = namespaces["arqtrad"]
+VASCON = namespaces["vascon"]
 ISO = namespaces["iso"]
 
 BROADER_PREDICATES = {

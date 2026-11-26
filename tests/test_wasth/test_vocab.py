@@ -3,7 +3,7 @@
 import pytest
 from rdflib import URIRef
 
-from wasth.core.rdf_namespace import local_concept_uri, reference_id
+from wasth.core.rdf_tools import local_concept_uri, reference_id
 
 
 @pytest.fixture

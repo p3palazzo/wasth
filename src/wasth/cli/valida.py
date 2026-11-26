@@ -37,6 +37,7 @@ class FileValidationResult:
 def file_validation(
     file: Path, model: type[Thing], verbosity: str = "normal"
 ) -> FileValidationResult:
+    """Validação contra o esquema YAML e restrições adicionais no modelo Python."""
     try:
         ficha = model.from_file(file)
     except ValidationError as e:
@@ -195,7 +196,7 @@ def valida(
             model = Work
 
     # Precisamos de opções para outros tipos de dados (db, etc.)
-    files = markdown_filelist(files_path)
+    files = markdown_filelist(files_path) if files_path else None
     if not files:
         raise typer.Abort(
             rprint(f":question:  Nenhuma ficha válida encontrada em {files_path}.")

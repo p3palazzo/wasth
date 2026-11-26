@@ -66,6 +66,7 @@ DEFAULT_CONFIG = "config.json"
 
 
 def get_app_dir() -> Path:
+    """Localiza a pasta padrão da app de acordo com o sistema operacional local."""
     return Path(typer.get_app_dir(APP_NAME))
 
 
