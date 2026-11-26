@@ -16,10 +16,10 @@ from ._common import AppState, get_app_dir, markdown_filelist
 app = typer.Typer()
 
 
-def dump_vocabulary_graph(graph: Graph, save_path: Path, format: str | None) -> Path:
+def dump_vocabulary_graph(graph: Graph, save_path: Path, s_format: str | None) -> Path:
     """Grava o grafo do vocabulário num arquivo/ficheiro."""
     if format:
-        graph.serialize(destination=save_path, format=format)
+        graph.serialize(destination=save_path, format=s_format)
     else:
         graph.serialize(destination=save_path)
     if save_path.is_file():
@@ -53,8 +53,11 @@ def build(
             help="Caminho de destino para gravar o grafo processado.",
         ),
     ] = None,
-    format: Annotated[
-        str | None, typer.Option(help="Formato de exportação do grafo.")
+    s_format: Annotated[
+        str | None,
+        typer.Option(
+            "--format", help="Formato de exportação do grafo."
+        )
     ] = None,
 ) -> None:
     """Cria o grafo do vocabulário controlado a partir das fichas."""
@@ -93,7 +96,7 @@ def build(
     if not graph:
         raise typer.Abort("Nenhum objeto inserido no grafo.")
     if typer.confirm(f"Gravar o grafo em {save_path}?", default=True):
-        dump_vocabulary_graph(graph, save_path, format)
+        dump_vocabulary_graph(graph, save_path, s_format)
 
 
 @app.callback(invoke_without_command=True)
