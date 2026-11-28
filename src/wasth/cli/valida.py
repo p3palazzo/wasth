@@ -54,8 +54,7 @@ def file_validation(
             is_valid=False,
             load_error=str(e),
         )
-    else:
-        rprint(f":white_check_mark:  {ficha.title} | {file.name}")
+    rprint(f":white_check_mark:  {ficha.title} | {file.name}")
 
     return FileValidationResult(file_path=file, is_valid=True)
 

@@ -53,7 +53,7 @@ MAPPING_PREDICATES = {
 }
 
 
-def narrower_predicate(broader_predicate: URIRef) -> URIRef:
+def narrower_predicate(broader_predicate: SkosBroaderRelation) -> URIRef:
     """Gera as categorias de descendentes a partir das categorias de ancestrais."""
     if broader_predicate == SKOS.broader:
         return SKOS.narrower

@@ -35,7 +35,7 @@ def parse_metadata(file, encoding="utf-8") -> frontmatter.Post:
 def serialize(data) -> str | None:
     """Devolve metadados ao formato texto"""
     if isinstance(data, Thing):
-        metadata = frontmatter.dumps(data)
+        metadata = yaml.dump(data)
         return metadata
     raise TypeError("Data type is not a dict")
 

@@ -70,15 +70,6 @@ def site_extent(
     return footprint if footprint.is_valid else None
 
 
-def ref_id(ref) -> str | None:
-    """`id` do conceito alvo de uma referência.
-
-    Aceita tanto `concept_name` como objeto Concept (esquema atual, `inlined:
-    true`) quanto como string (se o esquema passar a `inlined: false`).
-    """
-    return ref if isinstance(ref, str) else getattr(ref, "refid", None)
-
-
 # -----------------------------------------------------------------------------
 # Subclasses de Schema
 # -----------------------------------------------------------------------------
@@ -185,7 +176,7 @@ class Work(Thing, _Work):
         loc = self.site.location
         if not loc:
             return None
-        if loc.lat is None or loc.lon is None:
+        if not loc.lat or not loc.lon:
             return None
         return openlocationcode.encode(loc.lat, loc.lon, 11)
 
@@ -219,10 +210,12 @@ class Work(Thing, _Work):
 
     @property
     def site_location(self) -> geojson.Point | None:
+        """Retorna um ponto geoJSON a partir das coordenadas de locação."""
         return site_location(self.site.location) if self.site.location else None
 
     @property
     def site_extent(self) -> geojson.Polygon | geojson.MultiPolygon | None:
+        """Retorna uma feature geoJSON para as coordenadas de implantação."""
         return site_extent(self.site.extent) if self.site.extent else None
 
 
@@ -231,9 +224,16 @@ class Concept(Thing, _Concept):
 
     @classmethod
     def from_file(cls, f: Path):
+        """Mais validações do id."""
         post = frontmatter.load(str(f))
         if not post.metadata.get("id"):
             post.metadata["id"] = f.stem
+        elif post.metadata["id"] != f.stem:
+            raise ValueError(
+                f"O ID {post.metadata["id"]} não corresponde ao nome do arquivo/ficheiro {f.stem}."
+            )
+        elif str(post.metadata["id"]).casefold() != post.metadata["id"]:
+            raise ValueError(f"O ID {post.metadata["id"]} não está normalizado.")
         return cls.from_post(post)
 
     def iter_references(self):
@@ -243,21 +243,28 @@ class Concept(Thing, _Concept):
                 yield name, i, ref
 
     @property
-    def broader_ids(self) -> set[str | None]:
-        return {ref_id(r) for r in self.broader or [] if ref_id(r)}
+    def broader_ids(self) -> set[str] | None:
+        """Conjunto dos ancestrais diretos."""
+        if not self.broader:
+            return None
+        return {ref.refid for ref in self.broader}
 
     @property
-    def relation_ids(self) -> set[str | None]:
-        return {ref_id(r) for r in self.relation or [] if ref_id(r)}
+    def relation_ids(self) -> set[str] | None:
+        """Conjunto das relações diretas."""
+        if not self.relation:
+            return None
+        return {ref.refid for ref in self.relation if ref}
 
     @model_validator(mode="after")
     def _validate_concept(self):
+        """Valida id e verifica consistência das relações hierárquicas e relacionais."""
         if not self.id:
             raise ValueError("Todo conceito precisa de `id`.")
 
         seen: dict[str, set[str]] = {}
         for name, i, ref in self.iter_references():
-            target = ref_id(ref)
+            target = ref.refid
             if not target:
                 raise ValueError(f"{name}[{i}] não aponta para nenhum conceito.")
             if name != "mapping" and target == self.id:

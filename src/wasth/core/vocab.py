@@ -2,7 +2,7 @@
 
 O módulo só depende dos atributos `id`, `broader`, `relation`, `mapping`,
 `narrower`, `bibliographic_citation` e `title` dos conceitos (e de
-`models.ref_id`), de modo que funciona igualmente com fichas lidas de
+`ref.refid`), de modo que funciona igualmente com fichas lidas de
 arquivos, de um banco de dados ou de qualquer outro suporte.
 """
 
@@ -13,9 +13,9 @@ from typing import Self
 from arqtrad_schema.datamodel.arqtrad_schema_pydantic import NarrowerConceptReference
 from rdflib import Graph
 
-from wasth.models import Concept, ref_id
+from wasth.models import Concept
 
-from .rdf_tools import build_vocabulary_graph
+from .rdf_tools import build_vocabulary_graph, narrower_predicate
 
 
 # --------------------------------------------------------------------------------------------------
@@ -29,6 +29,7 @@ class Vocabulary:
 
     @classmethod
     def from_concepts(cls, models: list[Concept]) -> Self:
+        """Inicializa o Vocabulário a partir de uma lista de objetos Conceito."""
         concepts: dict = {}
         load_errors = []
         for concept in models:
@@ -40,7 +41,7 @@ class Vocabulary:
         return cls(concepts=concepts, graph=graph, load_errors=load_errors)
 
     # -------------------------------------------------------------- graph
-    def _broader_graph(self) -> dict[str, set[str | None]]:
+    def _broader_graph(self) -> dict[str, set[str] | None]:
         return {cid: set(c.broader_ids) for cid, c in self.concepts.items()}
 
     def ancestors(self, cid: str) -> set[str]:
@@ -66,7 +67,7 @@ class Vocabulary:
         # Alvos inexistentes (mapping aponta para vocabulários externos: ignorado).
         for cid, c in self.concepts.items():
             for name, i, ref in c.iter_references():
-                target = ref_id(ref)
+                target = ref.refid
                 if name != "mapping" and target not in self.concepts:
                     problems.append(
                         f"{cid}: {name}[{i}] aponta para {target!r}, que não existe."
@@ -106,11 +107,11 @@ class Vocabulary:
         children: dict[str, list[NarrowerConceptReference]] = {}
         for child in self.concepts.values():
             for ref in child.broader or []:
-                parent = ref_id(ref)
+                parent = ref.refid
                 if parent in self.concepts:
                     children.setdefault(parent, []).append(
                         NarrowerConceptReference(
-                            narrower_match=ref.broader_match,  # enums idênticos
+                            narrower_match=narrower_predicate(ref.broader_match),
                             refid=child.id,
                         )
                     )

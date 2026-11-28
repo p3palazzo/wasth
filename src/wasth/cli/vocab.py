@@ -11,7 +11,7 @@ from rich.progress import track
 from wasth.core.vocab import Vocabulary
 from wasth.models import Concept
 
-from ._common import AppState, get_app_dir, markdown_filelist
+from ._common import AppState, FilesPath, get_app_dir, markdown_filelist
 
 app = typer.Typer()
 
@@ -35,19 +35,7 @@ def dump_vocabulary_graph(
 @app.command()
 def build(
     ctx: typer.Context,
-    source: Annotated[
-        Path | None,
-        typer.Option(
-            exists=True,
-            dir_okay=True,
-            file_okay=False,
-            readable=True,
-            resolve_path=True,
-            help=(
-"Pasta contendo as fichas do vocabulário controlado em formato Markdown."
-            ),
-        ),
-    ] = None,
+    source: FilesPath | None,
     dest: Annotated[
         Path | None,
         typer.Option(
@@ -60,10 +48,7 @@ def build(
         ),
     ] = None,
     s_format: Annotated[
-        str | None,
-        typer.Option(
-            "--format", help="Formato de exportação do grafo."
-        )
+        str | None, typer.Option("--format", help="Formato de exportação do grafo.")
     ] = None,
 ) -> None:
     """Cria o grafo do vocabulário controlado a partir das fichas."""
@@ -105,6 +90,26 @@ def build(
         dump_vocabulary_graph(graph, save_path, s_format)
 
 
+@app.command()
+def export(
+    ctx: typer.Context,
+    source: FilesPath | None,
+    graph_file: Annotated[
+        Path | None,
+        typer.Option(
+            "--graph-file",
+            exists=True,
+            dir_okay=False,
+            file_okay=True,
+            readable=True,
+            resolve_path=True,
+            help="Caminho para o grafo já resolvido.",
+        ),
+    ] = None,
+) -> None:
+    pass
+
+
 @app.callback(invoke_without_command=True)
 def show_vocab(
     ctx: typer.Context,
@@ -114,12 +119,10 @@ def show_vocab(
     config_source = Path(state.config["vocab"])
 
     if config_source.is_dir():
-        rprint(
-            f"Pasta configurada para o vocabulário controlado: {config_source}"
-        )
+        rprint(f"Pasta configurada para o vocabulário controlado: {config_source}")
     else:
         rprint(
-"Para saber como configurar as pastas padrão, envie [b]wasth configure[/b]"
+            "Para saber como configurar as pastas padrão, envie [b]wasth configure[/b]"
         )
     rprint("Envie [b]wasth vocab --help[/b] para ver os comandos disponíveis.")
 
